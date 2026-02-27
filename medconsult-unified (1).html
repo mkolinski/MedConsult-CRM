@@ -1,0 +1,2392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedConsult — Unified Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=Fraunces:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   SHARED TOKENS
+═══════════════════════════════════════════════ */
+:root {
+  /* CRM dark palette */
+  --crm-bg:#0a0d12; --crm-bg2:#0f1318; --crm-bg3:#151a22; --crm-bg4:#1c2330;
+  --crm-border:#1e2a38; --crm-border2:#253040;
+  --crm-accent:#00d4aa; --crm-accent2:#0095ff; --crm-accent3:#ff6b35; --crm-accent4:#ffd166;
+  --crm-text:#e8eef5; --crm-text2:#8a9bb0; --crm-text3:#4d6070;
+  --crm-red:#ff4757; --crm-green:#2ed573; --crm-yellow:#ffd166;
+  /* Portal light palette */
+  --p-bg:#f5f7fa; --p-bg2:#fff; --p-bg3:#eef1f6; --p-bg4:#e4e9f2;
+  --p-border:#e0e6ef; --p-border2:#cdd5e0;
+  --p-navy:#0d1b2e; --p-navy2:#1a2d47;
+  --p-teal:#00917c; --p-teal2:#00b899; --p-teal-light:#e6f7f5;
+  --p-blue:#1d6fb8; --p-blue-light:#e8f2fb;
+  --p-amber:#d97706; --p-amber-light:#fef3c7;
+  --p-red:#dc2626; --p-red-light:#fef2f2;
+  --p-green:#059669; --p-green-light:#ecfdf5;
+  --p-text:#0d1b2e; --p-text2:#4a5568; --p-text3:#8896a8;
+  --p-shadow:0 1px 3px rgba(13,27,46,.06),0 4px 16px rgba(13,27,46,.04);
+  --p-shadow-md:0 4px 12px rgba(13,27,46,.08),0 12px 32px rgba(13,27,46,.06);
+  /* Shared */
+  --mono:'DM Mono',monospace;
+  --display-crm:'Syne',sans-serif;
+  --display-portal:'Fraunces',serif;
+  --body:'Plus Jakarta Sans',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--body);min-height:100vh;overflow-x:hidden}
+
+/* ═══════════════════════════════════════════════
+   SCREENS
+═══════════════════════════════════════════════ */
+.screen{display:none;min-height:100vh}
+.screen.active{display:block}
+
+/* ═══════════════════════════════════════════════
+   TRANSITION OVERLAY
+═══════════════════════════════════════════════ */
+.transition-overlay{
+  position:fixed;inset:0;z-index:999;
+  background:var(--p-navy);
+  opacity:0;pointer-events:none;
+  transition:opacity .3s ease;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:12px;
+}
+.transition-overlay.show{opacity:1;pointer-events:all}
+.transition-spinner{
+  width:36px;height:36px;border-radius:50%;
+  border:3px solid rgba(0,212,170,.2);
+  border-top-color:var(--crm-accent);
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.transition-label{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.4);letter-spacing:2px;text-transform:uppercase}
+
+/* ═══════════════════════════════════════════════
+   ██████  CRM STYLES
+═══════════════════════════════════════════════ */
+#crm-screen{background:var(--crm-bg);color:var(--crm-text)}
+
+/* Noise texture */
+#crm-screen::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.025'/%3E%3C/svg%3E");
+}
+
+.crm-shell{display:flex;height:100vh;position:relative;z-index:1}
+
+/* Sidebar */
+.crm-sidebar{width:240px;min-width:240px;background:var(--crm-bg2);border-right:1px solid var(--crm-border);display:flex;flex-direction:column}
+.crm-logo{padding:24px 20px 20px;border-bottom:1px solid var(--crm-border)}
+.crm-logo-mark{font-family:var(--display-crm);font-size:18px;font-weight:800;color:var(--crm-accent);letter-spacing:-.5px}
+.crm-logo-sub{font-family:var(--mono);font-size:9px;color:var(--crm-text3);letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.crm-nav{padding:14px 0;flex:1}
+.crm-nav-section{padding:8px 20px 4px;font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--crm-text3)}
+.crm-nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:var(--crm-text2);font-size:13px;font-weight:400;transition:all .15s;border-left:2px solid transparent}
+.crm-nav-item:hover{color:var(--crm-text);background:var(--crm-bg3)}
+.crm-nav-item.active{color:var(--crm-accent);border-left-color:var(--crm-accent);background:rgba(0,212,170,.06)}
+.crm-nav-icon{width:16px;text-align:center;font-size:13px;opacity:.8}
+.crm-nav-badge{margin-left:auto;background:var(--crm-accent3);color:#fff;font-family:var(--mono);font-size:9px;padding:2px 6px;border-radius:8px}
+.crm-nav-badge.blue{background:var(--crm-accent2)}.crm-nav-badge.yellow{background:var(--crm-yellow);color:#000}
+.crm-sidebar-footer{padding:14px 20px;border-top:1px solid var(--crm-border)}
+.crm-user-block{display:flex;align-items:center;gap:9px}
+.crm-avatar{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--crm-accent2),var(--crm-accent));display:flex;align-items:center;justify-content:center;font-family:var(--display-crm);font-weight:700;font-size:11px;color:#fff;flex-shrink:0}
+.crm-user-name{font-size:13px;font-weight:500;color:var(--crm-text)}
+.crm-user-role{font-family:var(--mono);font-size:9px;color:var(--crm-text3)}
+
+/* Main */
+.crm-main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.crm-topbar{height:56px;border-bottom:1px solid var(--crm-border);display:flex;align-items:center;padding:0 28px;gap:16px;background:var(--crm-bg2);flex-shrink:0}
+.crm-topbar-title{font-family:var(--display-crm);font-size:15px;font-weight:700;color:var(--crm-text)}
+.crm-topbar-date{font-family:var(--mono);font-size:11px;color:var(--crm-text3);margin-left:12px}
+.crm-topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.crm-search-box{display:flex;align-items:center;gap:8px;background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:6px 12px;width:220px}
+.crm-search-box input{background:none;border:none;outline:none;color:var(--crm-text);font-family:var(--body);font-size:13px;width:100%}
+.crm-search-box input::placeholder{color:var(--crm-text3)}
+.btn-crm-primary{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-family:var(--body);font-size:13px;font-weight:500;cursor:pointer;border:none;background:var(--crm-accent);color:#000;transition:all .15s}
+.btn-crm-primary:hover{background:#00f0c0;transform:translateY(-1px)}
+.btn-crm-ghost{background:var(--crm-bg3);color:var(--crm-text2);border:1px solid var(--crm-border);border-radius:8px;padding:6px 12px;font-family:var(--body);font-size:12px;cursor:pointer;transition:all .15s}
+.btn-crm-ghost:hover{color:var(--crm-text);border-color:var(--crm-border2)}
+.crm-content{flex:1;overflow-y:auto;padding:28px}
+
+/* Stats */
+.crm-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.crm-stat-card{background:var(--crm-bg2);border:1px solid var(--crm-border);border-radius:12px;padding:20px;position:relative;overflow:hidden;transition:border-color .2s}
+.crm-stat-card:hover{border-color:var(--crm-border2)}
+.crm-stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.crm-stat-card.green::after{background:var(--crm-green)}.crm-stat-card.red::after{background:var(--crm-red)}
+.crm-stat-card.yellow::after{background:var(--crm-yellow)}.crm-stat-card.blue::after{background:var(--crm-accent2)}
+.crm-stat-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--crm-text3);margin-bottom:10px}
+.crm-stat-value{font-family:var(--display-crm);font-size:32px;font-weight:800;line-height:1;margin-bottom:6px}
+.crm-stat-card.green .crm-stat-value{color:var(--crm-green)}.crm-stat-card.red .crm-stat-value{color:var(--crm-red)}
+.crm-stat-card.yellow .crm-stat-value{color:var(--crm-yellow)}.crm-stat-card.blue .crm-stat-value{color:var(--crm-accent2)}
+.crm-stat-sub{font-size:12px;color:var(--crm-text3)}
+
+/* Panels */
+.crm-two-col{display:grid;grid-template-columns:1fr 380px;gap:20px}
+.crm-panel{background:var(--crm-bg2);border:1px solid var(--crm-border);border-radius:12px;overflow:hidden}
+.crm-panel-header{display:flex;align-items:center;padding:16px 20px;border-bottom:1px solid var(--crm-border);gap:10px}
+.crm-panel-title{font-family:var(--display-crm);font-size:13px;font-weight:700;color:var(--crm-text)}
+.crm-panel-count{font-family:var(--mono);font-size:10px;color:var(--crm-text3);background:var(--crm-bg3);padding:2px 8px;border-radius:8px}
+.crm-panel-action{margin-left:auto}
+
+/* Table */
+.crm-table-head{display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr 1fr 100px;padding:10px 20px;border-bottom:1px solid var(--crm-border);gap:12px}
+.crm-th{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--crm-text3)}
+.crm-table-row{display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr 1fr 100px;padding:12px 20px;border-bottom:1px solid var(--crm-border);gap:12px;align-items:center;cursor:pointer;transition:background .15s}
+.crm-table-row:hover{background:var(--crm-bg3)}
+.crm-table-row:last-child{border-bottom:none}
+.crm-client-name{font-size:13px;font-weight:500;color:var(--crm-text)}
+.crm-client-type{font-family:var(--mono);font-size:10px;color:var(--crm-text3)}
+.crm-status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px;font-family:var(--mono);font-size:10px;font-weight:500}
+.crm-status-pill::before{content:'';width:5px;height:5px;border-radius:50%}
+.crm-status-pill.active{background:rgba(46,213,115,.12);color:var(--crm-green)}.crm-status-pill.active::before{background:var(--crm-green)}
+.crm-status-pill.at-risk{background:rgba(255,71,87,.12);color:var(--crm-red)}.crm-status-pill.at-risk::before{background:var(--crm-red)}
+.crm-status-pill.pending{background:rgba(255,209,102,.12);color:var(--crm-yellow)}.crm-status-pill.pending::before{background:var(--crm-yellow)}
+.crm-td{font-size:13px;color:var(--crm-text2)}
+.crm-td.mono{font-family:var(--mono);font-size:11px}
+.fu-overdue{color:var(--crm-red)}.fu-soon{color:var(--crm-yellow)}.fu-ok{color:var(--crm-text3)}
+
+/* Portal Launch Button */
+.btn-portal-launch{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;border-radius:6px;
+  background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);
+  color:var(--crm-accent);font-family:var(--mono);font-size:10px;font-weight:500;
+  cursor:pointer;transition:all .2s;
+}
+.btn-portal-launch:hover{background:rgba(0,212,170,.2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,212,170,.15)}
+.btn-portal-launch .arrow{transition:transform .2s}
+.btn-portal-launch:hover .arrow{transform:translateX(3px)}
+
+/* Alert / Deliverable panels */
+.crm-right-panels{display:flex;flex-direction:column;gap:20px}
+.crm-alert-item{display:flex;gap:12px;padding:13px 20px;border-bottom:1px solid var(--crm-border);align-items:flex-start;cursor:pointer;transition:background .15s}
+.crm-alert-item:hover{background:var(--crm-bg3)}.crm-alert-item:last-child{border-bottom:none}
+.crm-alert-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.crm-alert-icon.red{background:rgba(255,71,87,.15)}.crm-alert-icon.yellow{background:rgba(255,209,102,.15)}.crm-alert-icon.blue{background:rgba(0,149,255,.15)}
+.crm-alert-title{font-size:13px;font-weight:500;color:var(--crm-text);margin-bottom:2px}
+.crm-alert-sub{font-size:12px;color:var(--crm-text3)}
+.crm-alert-time{font-family:var(--mono);font-size:10px;color:var(--crm-text3);margin-left:auto;flex-shrink:0}
+.crm-del-item{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--crm-border);cursor:pointer;transition:background .15s}
+.crm-del-item:hover{background:var(--crm-bg3)}.crm-del-item:last-child{border-bottom:none}
+.crm-checkbox{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--crm-border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.crm-checkbox.done{background:var(--crm-accent);border-color:var(--crm-accent)}
+.crm-checkbox.done::after{content:'✓';font-size:10px;color:#000;font-weight:700}
+.crm-del-name{font-size:13px;color:var(--crm-text)}.crm-del-client{font-family:var(--mono);font-size:10px;color:var(--crm-text3);margin-top:1px}
+.crm-del-due{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;flex-shrink:0}
+.crm-del-due.overdue{background:rgba(255,71,87,.12);color:var(--crm-red)}.crm-del-due.soon{background:rgba(255,209,102,.12);color:var(--crm-yellow)}.crm-del-due.ok{background:rgba(46,213,115,.1);color:var(--crm-green)}
+.live-dot{display:inline-block;width:6px;height:6px;background:var(--crm-green);border-radius:50%;animation:pulse 2s infinite;margin-right:6px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.crm-action-row{display:flex;gap:6px}
+
+/* CRM Modals */
+.crm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.crm-modal-overlay.open{opacity:1;pointer-events:all}
+.crm-modal{background:var(--crm-bg2);border:1px solid var(--crm-border2);border-radius:16px;width:560px;max-height:85vh;overflow-y:auto;transform:translateY(16px);transition:transform .2s}
+.crm-modal-overlay.open .crm-modal{transform:translateY(0)}
+.crm-modal-header{padding:24px 24px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.crm-modal-name{font-family:var(--display-crm);font-size:20px;font-weight:800;color:var(--crm-text)}
+.crm-modal-meta{font-family:var(--mono);font-size:11px;color:var(--crm-text3);margin-top:4px}
+.crm-modal-close{width:32px;height:32px;border-radius:8px;background:var(--crm-bg3);border:1px solid var(--crm-border);color:var(--crm-text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s}
+.crm-modal-close:hover{color:var(--crm-text)}
+.crm-tabs{display:flex;border-bottom:1px solid var(--crm-border);padding:0 20px}
+.crm-tab{padding:12px 14px;font-size:13px;font-weight:500;color:var(--crm-text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.crm-tab:hover{color:var(--crm-text2)}.crm-tab.active{color:var(--crm-accent);border-bottom-color:var(--crm-accent)}
+.crm-modal-body{padding:20px 24px 16px}
+.crm-modal-section{margin-bottom:18px}
+.crm-modal-section-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--crm-text3);margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid var(--crm-border)}
+.crm-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.crm-modal-field{background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:10px 12px}
+.crm-modal-field label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--crm-text3);display:block;margin-bottom:4px}
+.crm-modal-field input,.crm-modal-field select,.crm-modal-field textarea{background:none;border:none;outline:none;color:var(--crm-text);font-family:var(--body);font-size:13px;width:100%;resize:none}
+.crm-modal-field select option{background:var(--crm-bg3)}
+.crm-modal-field textarea{min-height:65px}
+.crm-challenge-tag{display:flex;align-items:center;gap:8px;background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--crm-text2);margin-bottom:6px}
+.crm-note-area{background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:12px}
+.crm-note-area textarea{background:none;border:none;outline:none;color:var(--crm-text);font-family:var(--body);font-size:13px;width:100%;resize:none;min-height:75px}
+.crm-modal-footer{padding:14px 24px;border-top:1px solid var(--crm-border);display:flex;gap:10px;justify-content:space-between;align-items:center}
+.crm-portal-btn-modal{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:var(--crm-accent);font-family:var(--body);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
+.crm-portal-btn-modal:hover{background:rgba(0,212,170,.2);transform:translateY(-1px)}
+.crm-log-entry{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--crm-border)}
+.crm-log-entry:last-child{border-bottom:none}
+.crm-log-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.crm-log-text{font-size:13px;color:var(--crm-text);margin-bottom:2px}
+.crm-log-meta{font-family:var(--mono);font-size:10px;color:var(--crm-text3)}
+.add-modal-wide{width:520px}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--crm-bg)}::-webkit-scrollbar-thumb{background:var(--crm-border2);border-radius:3px}
+
+/* ═══════════════════════════════════════════════
+   ██████  PORTAL STYLES
+═══════════════════════════════════════════════ */
+#portal-screen{background:var(--p-bg);color:var(--p-text)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+.p-header{background:var(--p-navy);padding:0 40px;height:62px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:50}
+.p-logo{font-family:var(--display-portal);font-size:15px;font-weight:700;color:var(--p-teal2)}
+.p-hdr-div{width:1px;height:18px;background:rgba(255,255,255,.1)}
+.p-practice-name{font-size:13px;font-weight:500;color:rgba(255,255,255,.65)}
+.p-hdr-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.p-period-sel{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:5px 10px;color:rgba(255,255,255,.65);font-family:var(--body);font-size:12px;outline:none}
+.p-period-sel option{background:var(--p-navy2)}
+.p-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.p-badge.green{background:var(--p-green-light);color:var(--p-green)}
+.p-badge.amber{background:var(--p-amber-light);color:var(--p-amber)}
+.p-badge.red{background:var(--p-red-light);color:var(--p-red)}
+
+/* Back to CRM button */
+.btn-back-crm{
+  display:flex;align-items:center;gap:7px;
+  padding:6px 12px;border-radius:8px;
+  background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);
+  color:var(--crm-accent);font-family:var(--body);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.btn-back-crm:hover{background:rgba(0,212,170,.2);transform:translateY(-1px)}
+
+.p-nav{background:var(--p-bg2);border-bottom:1px solid var(--p-border);padding:0 40px;display:flex}
+.p-tab{padding:13px 18px;font-size:13px;font-weight:500;color:var(--p-text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.p-tab:hover{color:var(--p-text2)}.p-tab.active{color:var(--p-teal);border-bottom-color:var(--p-teal)}
+.p-content{padding:32px 40px;max-width:1280px}
+
+/* Data source bar */
+.p-data-bar{display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:9px;margin-bottom:18px;font-size:12px;font-weight:500}
+.p-data-bar.demo{background:var(--p-blue-light);color:var(--p-blue);border:1px solid #bfdbfe}
+.p-data-bar.excel{background:var(--p-green-light);color:var(--p-green);border:1px solid #a7f3d0}
+
+.p-alert-strip{display:flex;align-items:center;gap:9px;background:var(--p-amber-light);border:1px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12px;color:var(--p-amber);font-weight:500}
+
+.p-section-title{font-family:var(--display-portal);font-size:20px;font-weight:600;color:var(--p-navy);margin-bottom:3px}
+.p-section-sub{font-size:12px;color:var(--p-text3);margin-bottom:20px}
+
+.p-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.p-kpi-card{background:var(--p-bg2);border:1px solid var(--p-border);border-radius:14px;padding:22px;box-shadow:var(--p-shadow);transition:box-shadow .2s,transform .2s;animation:fadeUp .4s ease both}
+.p-kpi-card:hover{box-shadow:var(--p-shadow-md);transform:translateY(-2px)}
+.p-kpi-card:nth-child(1){animation-delay:.05s}.p-kpi-card:nth-child(2){animation-delay:.1s}.p-kpi-card:nth-child(3){animation-delay:.15s}.p-kpi-card:nth-child(4){animation-delay:.2s}
+.p-kpi-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--p-text3);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.p-kpi-icon{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px}
+.p-kpi-value{font-family:var(--display-portal);font-size:28px;font-weight:700;color:var(--p-navy);line-height:1;margin-bottom:6px}
+.p-kpi-trend{font-size:11px;font-weight:500}
+.p-trend-up{color:var(--p-green)}.p-trend-down{color:var(--p-red)}.p-trend-flat{color:var(--p-text3)}
+
+.p-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
+.p-chart-card{background:var(--p-bg2);border:1px solid var(--p-border);border-radius:14px;padding:22px;box-shadow:var(--p-shadow);animation:fadeUp .5s ease .2s both}
+.p-chart-title{font-size:13px;font-weight:700;color:var(--p-navy);margin-bottom:3px}
+.p-chart-sub{font-size:11px;color:var(--p-text3);margin-bottom:16px}
+.p-three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:22px}
+
+.p-bar-chart{display:flex;align-items:flex-end;gap:7px;height:130px;position:relative}
+.p-bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.p-bar-wrap{flex:1;display:flex;align-items:flex-end;width:100%;gap:3px}
+.p-bar{flex:1;border-radius:4px 4px 0 0;cursor:pointer;transition:opacity .2s}.p-bar:hover{opacity:.75}
+.p-bar-label{font-size:9px;color:var(--p-text3);font-weight:600;white-space:nowrap}
+
+.p-donut-container{display:flex;align-items:center;gap:24px}
+.p-donut-wrap{position:relative;width:120px;height:120px;flex-shrink:0}
+.p-donut-svg{width:120px;height:120px;transform:rotate(-90deg)}
+.p-donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.p-donut-val{font-family:var(--display-portal);font-size:17px;font-weight:700;color:var(--p-navy);line-height:1}
+.p-donut-lbl{font-size:9px;color:var(--p-text3);margin-top:2px}
+.p-legend{flex:1}
+.p-legend-item{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.p-legend-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.p-legend-name{font-size:11px;color:var(--p-text2);flex:1}.p-legend-val{font-size:11px;font-weight:600;color:var(--p-navy)}
+
+.p-metric-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--p-border)}
+.p-metric-row:last-child{border-bottom:none}
+.p-metric-name{font-size:12px;color:var(--p-text2)}.p-metric-value{font-size:12px;font-weight:600;color:var(--p-navy)}
+
+.p-ar-table{width:100%;border-collapse:collapse}
+.p-ar-table th{text-align:left;font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--p-text3);padding:6px 0 10px;border-bottom:1px solid var(--p-border)}
+.p-ar-table td{padding:9px 0;font-size:12px;color:var(--p-text2);border-bottom:1px solid var(--p-border)}
+.p-ar-table tr:last-child td{border-bottom:none}
+.p-ar-mini-bar{height:5px;border-radius:3px;background:var(--p-bg3);overflow:hidden}
+.p-ar-mini-fill{height:100%;border-radius:3px}
+.p-ar-amount{font-weight:600;color:var(--p-navy)}
+
+.p-progress-item{margin-bottom:12px}
+.p-progress-header{display:flex;justify-content:space-between;margin-bottom:5px}
+.p-progress-label{font-size:11px;color:var(--p-text2);font-weight:500}.p-progress-val{font-size:11px;font-weight:700;color:var(--p-navy)}
+.p-progress-track{height:5px;background:var(--p-bg3);border-radius:3px;overflow:hidden}
+.p-progress-fill{height:100%;border-radius:3px;transition:width 1s ease}
+
+.p-staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.p-staff-card{background:var(--p-bg3);border-radius:9px;padding:12px;display:flex;align-items:center;gap:9px}
+.p-staff-avatar{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--display-portal);font-weight:700;font-size:12px;color:#fff;flex-shrink:0}
+.p-staff-name{font-size:12px;font-weight:600;color:var(--p-navy)}.p-staff-role{font-size:10px;color:var(--p-text3)}
+
+.p-notes-card{background:linear-gradient(135deg,var(--p-navy) 0%,var(--p-navy2) 100%);border-radius:14px;padding:26px;margin-bottom:22px;position:relative;overflow:hidden}
+.p-notes-card::before{content:'';position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(0,184,153,.1) 0%,transparent 70%);top:-80px;right:-40px}
+.p-notes-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(0,184,153,.15);border:1px solid rgba(0,184,153,.2);color:var(--p-teal2);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:10px}
+.p-notes-title{font-family:var(--display-portal);font-size:17px;font-weight:600;color:#fff;margin-bottom:8px;position:relative}
+.p-notes-text{font-size:13px;line-height:1.7;color:rgba(255,255,255,.62);position:relative;max-width:680px}
+.p-notes-footer{display:flex;align-items:center;gap:9px;margin-top:14px;position:relative}
+.p-consultant-avatar{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--p-teal),var(--p-blue));display:flex;align-items:center;justify-content:center;font-family:var(--display-portal);font-weight:700;font-size:10px;color:#fff}
+.p-consultant-name{font-size:11px;font-weight:600;color:rgba(255,255,255,.65)}.p-consultant-date{font-size:10px;color:rgba(255,255,255,.3)}
+
+.p-tab-panel{display:none}.p-tab-panel.active{display:block}
+
+/* ═══════════════════════════════════════════════
+   ██████  LOGIN SCREEN STYLES
+═══════════════════════════════════════════════ */
+#login-screen{
+  background:var(--p-bg);
+  min-height:100vh;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+}
+#login-screen.active{display:flex}
+
+/* Decorative background shapes */
+.login-bg-shape{
+  position:absolute;pointer-events:none;
+}
+.login-bg-shape.s1{
+  width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,145,124,.08) 0%,transparent 70%);
+  top:-200px;right:-150px;
+}
+.login-bg-shape.s2{
+  width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,rgba(29,111,184,.06) 0%,transparent 70%);
+  bottom:-100px;left:-100px;
+}
+.login-bg-shape.s3{
+  width:1px;height:100%;
+  background:linear-gradient(to bottom,transparent,rgba(0,145,124,.1),transparent);
+  left:50%;
+}
+
+.login-card{
+  background:var(--p-bg2);
+  border:1px solid var(--p-border);
+  border-radius:20px;
+  box-shadow:0 8px 40px rgba(13,27,46,.10),0 2px 8px rgba(13,27,46,.06);
+  width:440px;
+  max-width:calc(100vw - 32px);
+  overflow:hidden;
+  position:relative;
+  z-index:1;
+  animation:fadeUp .5s ease both;
+}
+
+.login-header{
+  background:var(--p-navy);
+  padding:32px 36px 28px;
+  position:relative;
+  overflow:hidden;
+}
+.login-header::after{
+  content:'';position:absolute;
+  width:240px;height:240px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,184,153,.12) 0%,transparent 70%);
+  top:-80px;right:-40px;
+  pointer-events:none;
+}
+.login-logo{
+  font-family:var(--display-portal);font-size:22px;font-weight:700;
+  color:var(--p-teal2);margin-bottom:4px;position:relative;
+}
+.login-tagline{
+  font-size:12px;color:rgba(255,255,255,.4);letter-spacing:.5px;position:relative;
+}
+
+/* Next meeting strip inside header */
+.login-next-mtg{
+  margin-top:18px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:10px;
+  padding:12px 14px;
+  display:flex;align-items:center;gap:10px;
+  position:relative;
+}
+.login-next-mtg-icon{
+  width:32px;height:32px;border-radius:8px;
+  background:rgba(0,184,153,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.login-next-mtg-label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:2px}
+.login-next-mtg-name{font-size:13px;font-weight:600;color:rgba(255,255,255,.85)}
+.login-next-mtg-date{font-size:11px;color:rgba(255,255,255,.4)}
+
+.login-body{padding:28px 36px 32px}
+
+.login-intro{
+  font-size:13px;color:var(--p-text2);margin-bottom:22px;line-height:1.6;
+}
+
+.login-field{margin-bottom:16px}
+.login-label{
+  display:block;font-size:11px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;color:var(--p-text3);margin-bottom:7px;
+}
+.login-input{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--p-border2);border-radius:10px;
+  background:var(--p-bg);
+  font-family:var(--body);font-size:14px;color:var(--p-navy);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.login-input:focus{
+  border-color:var(--p-teal);
+  box-shadow:0 0 0 3px rgba(0,145,124,.1);
+}
+.login-input.error{border-color:var(--p-red);box-shadow:0 0 0 3px rgba(220,38,38,.08)}
+.login-input::placeholder{color:var(--p-text3)}
+
+/* Access code segmented display */
+.login-code-wrap{position:relative}
+.login-code-hint{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  font-family:var(--mono);font-size:10px;color:var(--p-text3);
+  pointer-events:none;
+}
+
+.login-error{
+  display:none;
+  background:var(--p-red-light);border:1px solid #fca5a5;
+  border-radius:8px;padding:10px 12px;
+  font-size:13px;color:var(--p-red);margin-bottom:16px;
+}
+.login-error.show{display:flex;align-items:center;gap:8px}
+
+.login-btn{
+  width:100%;padding:13px;
+  background:var(--p-teal);border:none;border-radius:10px;
+  font-family:var(--body);font-size:14px;font-weight:700;
+  color:#fff;cursor:pointer;
+  transition:background .2s,transform .15s,box-shadow .2s;
+  letter-spacing:.3px;
+}
+.login-btn:hover{background:var(--p-teal2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,145,124,.25)}
+.login-btn:active{transform:translateY(0)}
+
+.login-divider{
+  text-align:center;margin:20px 0 16px;
+  font-size:11px;color:var(--p-text3);
+  position:relative;
+}
+.login-divider::before,.login-divider::after{
+  content:'';position:absolute;top:50%;
+  width:calc(50% - 30px);height:1px;background:var(--p-border);
+}
+.login-divider::before{left:0}.login-divider::after{right:0}
+
+.login-consultant-btn{
+  width:100%;padding:11px;
+  background:transparent;
+  border:1.5px solid var(--p-border2);border-radius:10px;
+  font-family:var(--body);font-size:13px;font-weight:600;
+  color:var(--p-text2);cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.login-consultant-btn:hover{border-color:var(--crm-accent);color:var(--crm-accent);background:rgba(0,212,170,.04)}
+
+.login-footer{
+  text-align:center;margin-top:20px;
+  font-size:11px;color:var(--p-text3);
+}
+
+/* Consultant PIN modal */
+.consultant-pin-overlay{
+  position:fixed;inset:0;background:rgba(10,13,18,.85);
+  backdrop-filter:blur(8px);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+.consultant-pin-overlay.open{display:flex}
+.consultant-pin-card{
+  background:var(--crm-bg2);border:1px solid var(--crm-border2);
+  border-radius:16px;padding:32px;width:340px;
+  box-shadow:0 24px 48px rgba(0,0,0,.5);
+  animation:fadeUp .3s ease both;
+}
+.consultant-pin-title{
+  font-family:var(--display-crm);font-size:18px;font-weight:800;
+  color:var(--crm-text);margin-bottom:4px;
+}
+.consultant-pin-sub{font-size:12px;color:var(--crm-text3);margin-bottom:24px}
+.consultant-pin-input{
+  width:100%;padding:12px 14px;
+  background:var(--crm-bg3);border:1px solid var(--crm-border2);
+  border-radius:10px;color:var(--crm-text);
+  font-family:var(--mono);font-size:20px;letter-spacing:4px;text-align:center;
+  outline:none;margin-bottom:16px;transition:border-color .2s;
+}
+.consultant-pin-input:focus{border-color:var(--crm-accent)}
+.consultant-pin-input.error{border-color:var(--crm-red);animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.consultant-pin-row{display:flex;gap:10px}
+.consultant-pin-cancel{flex:1;padding:11px;background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;color:var(--crm-text2);font-family:var(--body);font-size:13px;cursor:pointer;transition:all .15s}
+.consultant-pin-cancel:hover{color:var(--crm-text)}
+.consultant-pin-submit{flex:2;padding:11px;background:var(--crm-accent);border:none;border-radius:8px;color:#000;font-family:var(--body);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+.consultant-pin-submit:hover{background:#00f0c0}
+.consultant-pin-hint{font-size:11px;color:var(--crm-text3);text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+  LOGIN SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen active" id="login-screen">
+  <div class="login-bg-shape s1"></div>
+  <div class="login-bg-shape s2"></div>
+  <div class="login-bg-shape s3"></div>
+
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-logo">MedConsult</div>
+      <div class="login-tagline">Practice Intelligence Platform</div>
+      <div class="login-next-mtg" id="login-next-mtg" style="display:none">
+        <div class="login-next-mtg-icon">📅</div>
+        <div>
+          <div class="login-next-mtg-label">Your Next Meeting</div>
+          <div class="login-next-mtg-name" id="login-mtg-name">—</div>
+          <div class="login-next-mtg-date" id="login-mtg-date">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="login-body">
+      <p class="login-intro">Sign in with your email and the access code provided by your MedConsult advisor.</p>
+
+      <div class="login-error" id="login-error">
+        <span>⚠</span>
+        <span id="login-error-msg">Invalid email or access code. Please try again.</span>
+      </div>
+
+      <div class="login-field">
+        <label class="login-label" for="login-email">Email Address</label>
+        <input class="login-input" type="email" id="login-email" placeholder="you@yourpractice.com" autocomplete="email">
+      </div>
+
+      <div class="login-field">
+        <label class="login-label" for="login-code">Access Code</label>
+        <div class="login-code-wrap">
+          <input class="login-input" type="password" id="login-code" placeholder="Enter your access code" maxlength="20" autocomplete="current-password">
+        </div>
+      </div>
+
+      <button class="login-btn" onclick="attemptClientLogin()">Sign In to Portal →</button>
+
+      <div class="login-divider">or</div>
+
+      <button class="login-consultant-btn" onclick="openConsultantPin()">
+        <span style="font-size:15px">◈</span> Consultant Access
+      </button>
+
+      <div class="login-footer">
+        Need help? Contact your MedConsult advisor.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONSULTANT PIN MODAL -->
+<div class="consultant-pin-overlay" id="consultant-pin-overlay">
+  <div class="consultant-pin-card">
+    <div class="consultant-pin-title">Consultant Access</div>
+    <div class="consultant-pin-sub">Enter your consultant PIN to access the full CRM</div>
+    <input class="consultant-pin-input" type="password" id="consultant-pin-input"
+      placeholder="• • • • • •" maxlength="6"
+      onkeydown="if(event.key==='Enter')submitConsultantPin()">
+    <div class="consultant-pin-row">
+      <button class="consultant-pin-cancel" onclick="closeConsultantPin()">Cancel</button>
+      <button class="consultant-pin-submit" onclick="submitConsultantPin()">Enter CRM →</button>
+    </div>
+    <div class="consultant-pin-hint" id="consultant-pin-hint">Default PIN: 123456</div>
+  </div>
+</div>
+
+<!-- TRANSITION OVERLAY -->
+<div class="transition-overlay" id="transition-overlay">
+  <div class="transition-spinner"></div>
+  <div class="transition-label" id="transition-label">Loading portal</div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+  CRM SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="crm-screen">
+  <div class="crm-shell">
+    <aside class="crm-sidebar">
+      <div class="crm-logo">
+        <div class="crm-logo-mark">MedConsult</div>
+        <div class="crm-logo-sub">Practice Intelligence</div>
+      </div>
+      <nav class="crm-nav">
+        <div class="crm-nav-section">Overview</div>
+        <div class="crm-nav-item active" onclick="crmShowView('dashboard',this)"><span class="crm-nav-icon">◈</span> Dashboard</div>
+        <div class="crm-nav-item" onclick="crmShowView('clients',this)"><span class="crm-nav-icon">⬡</span> All Practices <span class="crm-nav-badge blue">20</span></div>
+        <div class="crm-nav-section" style="margin-top:8px">Workflow</div>
+        <div class="crm-nav-item" onclick="crmShowView('followups',this)"><span class="crm-nav-icon">◷</span> Follow-Ups <span class="crm-nav-badge" id="fu-badge">—</span></div>
+        <div class="crm-nav-item" onclick="crmShowView('deliverables',this)"><span class="crm-nav-icon">◻</span> Deliverables <span class="crm-nav-badge yellow" id="del-badge">—</span></div>
+        <div class="crm-nav-item" onclick="crmShowView('meetings',this)"><span class="crm-nav-icon">📅</span> Meetings <span class="crm-nav-badge blue" id="mtg-badge">—</span></div>
+        <div class="crm-nav-section" style="margin-top:8px">Data</div>
+        <div class="crm-nav-item" onclick="document.getElementById('excel-upload').click()"><span class="crm-nav-icon">📊</span> Sync Excel</div>
+        <input type="file" id="excel-upload" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(event)">
+      </nav>
+      <div class="crm-sidebar-footer">
+        <div class="crm-user-block">
+          <div class="crm-avatar">MD</div>
+          <div><div class="crm-user-name">Dr. Consultant</div><div class="crm-user-role">Managing Principal</div></div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="crm-main">
+      <div class="crm-topbar">
+        <div class="crm-topbar-title" id="crm-view-title">Command Dashboard</div>
+        <div class="crm-topbar-date" id="crm-view-date"></div>
+        <div class="crm-topbar-right">
+          <div class="crm-search-box">
+            <span style="color:var(--crm-text3);font-size:13px">⌕</span>
+            <input type="text" placeholder="Search practices…" oninput="crmFilterClients(this.value)">
+          </div>
+          <button class="btn-crm-primary" onclick="openAddModal()">+ Add Practice</button>
+        </div>
+      </div>
+      <div class="crm-content" id="crm-content"></div>
+    </main>
+  </div>
+</div>
+
+<!-- CRM DETAIL MODAL -->
+<div class="crm-modal-overlay" id="crm-detail-modal">
+  <div class="crm-modal">
+    <div class="crm-modal-header">
+      <div>
+        <div class="crm-modal-name" id="crm-modal-name">—</div>
+        <div class="crm-modal-meta" id="crm-modal-meta">—</div>
+      </div>
+      <button class="crm-modal-close" onclick="closeCrmModal()">✕</button>
+    </div>
+    <div class="crm-tabs">
+      <div class="crm-tab active" onclick="switchCrmTab(this,'overview')">Overview</div>
+      <div class="crm-tab" onclick="switchCrmTab(this,'challenges')">Challenges</div>
+      <div class="crm-tab" onclick="switchCrmTab(this,'interactions')">Interactions</div>
+      <div class="crm-tab" onclick="switchCrmTab(this,'deliverables')">Deliverables</div>
+    </div>
+    <div class="crm-modal-body" id="crm-modal-body"></div>
+    <div class="crm-modal-footer">
+      <div style="display:flex;gap:8px">
+        <button class="crm-portal-btn-modal" id="modal-portal-btn" onclick="launchPortalFromModal()">↗ Open Portal</button>
+        <button class="crm-portal-btn-modal" style="background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.25);color:var(--crm-yellow)" onclick="scheduleMeetingForClient(activeCrmClientId,'mm')">📅 Schedule Meeting</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-crm-ghost" onclick="closeCrmModal()">Close</button>
+        <button class="btn-crm-primary" style="font-size:12px;padding:7px 14px">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLIENT MODAL -->
+<div class="crm-modal-overlay" id="crm-add-modal">
+  <div class="crm-modal add-modal-wide">
+    <div class="crm-modal-header">
+      <div><div class="crm-modal-name">Add New Practice</div><div class="crm-modal-meta">Onboard a new client</div></div>
+      <button class="crm-modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="crm-modal-body">
+      <div class="crm-modal-section">
+        <div class="crm-modal-section-title">Practice Information</div>
+        <div class="crm-modal-grid">
+          <div class="crm-modal-field"><label>Practice Name</label><input type="text" id="new-name"></div>
+          <div class="crm-modal-field"><label>Specialty</label><select id="new-specialty"><option>Family Medicine</option><option>Internal Medicine</option><option>Pediatrics</option><option>OB/GYN</option><option>Cardiology</option><option>Orthopedics</option><option>Dermatology</option><option>Other</option></select></div>
+          <div class="crm-modal-field"><label>Primary Contact</label><input type="text" id="new-contact"></div>
+          <div class="crm-modal-field"><label>Provider Count</label><input type="number" id="new-providers"></div>
+          <div class="crm-modal-field"><label>Phone</label><input type="text" id="new-phone"></div>
+          <div class="crm-modal-field"><label>Email</label><input type="text" id="new-email"></div>
+        </div>
+      </div>
+      <div class="crm-modal-section">
+        <div class="crm-modal-section-title">Engagement</div>
+        <div class="crm-modal-grid">
+          <div class="crm-modal-field"><label>Status</label><select id="new-status"><option value="active">Active</option><option value="pending">Needs Attention</option><option value="at-risk">At Risk</option></select></div>
+          <div class="crm-modal-field"><label>Next Follow-Up</label><input type="date" id="new-followup"></div>
+        </div>
+      </div>
+      <div class="crm-modal-section">
+        <div class="crm-modal-section-title">Notes</div>
+        <div class="crm-note-area"><textarea id="new-notes" placeholder="Key challenges and context…"></textarea></div>
+      </div>
+    </div>
+    <div class="crm-modal-footer" style="justify-content:flex-end">
+      <button class="btn-crm-ghost" onclick="closeAddModal()">Cancel</button>
+      <button class="btn-crm-primary" onclick="addClient()">Add Practice</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+  PORTAL SCREEN
+═══════════════════════════════════════════ -->
+<div class="screen" id="portal-screen">
+  <header class="p-header">
+    <div class="p-logo">MedConsult</div>
+    <div class="p-hdr-div"></div>
+    <div class="p-practice-name" id="p-practice-name">—</div>
+    <div class="p-hdr-right">
+      <select class="p-period-sel"><option>Q4 2025</option><option>Q1 2026</option><option>YTD 2025</option></select>
+      <span class="p-badge" id="p-health-badge">—</span>
+      <button class="btn-back-crm" id="btn-back-crm" onclick="backToCRM()" id="btn-back-crm-label">← Back to CRM</button>
+    </div>
+  </header>
+
+  <nav class="p-nav">
+    <div class="p-tab active" onclick="switchPortalTab(this,'overview')">Overview</div>
+    <div class="p-tab" onclick="switchPortalTab(this,'financial')">Financial</div>
+    <div class="p-tab" onclick="switchPortalTab(this,'operations')">Operations</div>
+    <div class="p-tab" onclick="switchPortalTab(this,'staffing')">Staffing</div>
+    <div class="p-tab" onclick="switchPortalTab(this,'consultant')">Consultant Notes</div>
+  </nav>
+
+  <div class="p-content">
+    <div id="p-alert-area"></div>
+    <div id="p-data-bar"></div>
+
+    <div class="p-tab-panel active" id="p-tab-overview">
+      <div class="p-section-title" id="p-overview-title">—</div>
+      <div class="p-section-sub" id="p-overview-sub">—</div>
+      <div class="p-kpi-grid" id="p-kpi-grid"></div>
+      <div class="p-charts-row">
+        <div class="p-chart-card"><div class="p-chart-title">Revenue vs. Collections</div><div class="p-chart-sub">Last 6 months</div><div class="p-bar-chart" id="p-rev-chart"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Payer Mix</div><div class="p-chart-sub">Revenue by payer category</div>
+          <div class="p-donut-container">
+            <div class="p-donut-wrap"><svg class="p-donut-svg" viewBox="0 0 100 100" id="p-donut-svg"></svg><div class="p-donut-center"><div class="p-donut-val" id="p-donut-val">—</div><div class="p-donut-lbl">Total Rev.</div></div></div>
+            <div class="p-legend" id="p-legend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="p-three-col">
+        <div class="p-chart-card"><div class="p-chart-title">Patient Volume</div><div class="p-chart-sub">Visits by type</div><div id="p-volume-metrics"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Scheduling</div><div class="p-chart-sub">Appointment metrics</div><div id="p-sched-metrics"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">AR Aging</div><div class="p-chart-sub">Outstanding by bucket</div><table class="p-ar-table" id="p-ar-table"></table></div>
+      </div>
+    </div>
+
+    <div class="p-tab-panel" id="p-tab-financial">
+      <div class="p-section-title">Financial Performance</div><div class="p-section-sub">Revenue, collections, expenses & AR detail</div>
+      <div class="p-kpi-grid" id="p-fin-kpis"></div>
+      <div class="p-charts-row">
+        <div class="p-chart-card"><div class="p-chart-title">Revenue Trend</div><div class="p-chart-sub">Billed vs. collected</div><div class="p-bar-chart" id="p-fin-chart"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Expense Breakdown</div><div class="p-chart-sub">By category</div><div id="p-expenses"></div></div>
+      </div>
+      <div class="p-chart-card" style="margin-bottom:20px"><div class="p-chart-title">AR Aging Detail</div><div class="p-chart-sub">Balance by age bucket</div><table class="p-ar-table" id="p-ar-detail" style="margin-top:14px"></table></div>
+    </div>
+
+    <div class="p-tab-panel" id="p-tab-operations">
+      <div class="p-section-title">Operational Metrics</div><div class="p-section-sub">Volume, productivity, scheduling & quality</div>
+      <div class="p-kpi-grid" id="p-ops-kpis"></div>
+      <div class="p-charts-row">
+        <div class="p-chart-card"><div class="p-chart-title">Provider Productivity</div><div class="p-chart-sub">wRVU vs. target</div><div id="p-productivity"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Visit Volume Trend</div><div class="p-chart-sub">Monthly</div><div class="p-bar-chart" id="p-visits-chart"></div></div>
+      </div>
+      <div class="p-three-col">
+        <div class="p-chart-card"><div class="p-chart-title">No-Show & Cancellation</div><div class="p-chart-sub">Current period</div><div id="p-noshow"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Scheduling Efficiency</div><div class="p-chart-sub">Capacity utilization</div><div id="p-utilization"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Quality Indicators</div><div class="p-chart-sub">Satisfaction & access</div><div id="p-quality"></div></div>
+      </div>
+    </div>
+
+    <div class="p-tab-panel" id="p-tab-staffing">
+      <div class="p-section-title">Staffing & HR</div><div class="p-section-sub">Headcount, turnover, open roles & roster</div>
+      <div class="p-kpi-grid" id="p-staff-kpis"></div>
+      <div class="p-charts-row">
+        <div class="p-chart-card"><div class="p-chart-title">Team Roster</div><div class="p-chart-sub">Current staff</div><div class="p-staff-grid" id="p-roster" style="margin-top:8px"></div></div>
+        <div class="p-chart-card"><div class="p-chart-title">Turnover & Retention</div><div class="p-chart-sub">12-month rolling</div><div id="p-turnover"></div></div>
+      </div>
+    </div>
+
+    <div class="p-tab-panel" id="p-tab-consultant">
+      <div class="p-section-title">Consultant Updates</div><div class="p-section-sub">Notes, priorities & action items from your MedConsult advisor</div>
+      <div id="p-notes-area"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CRM DATA
+═══════════════════════════════════════════════ */
+const today = new Date();
+let excelSynced = false;
+
+let clients = [
+  {id:1,name:"Lakewood Family Medicine",specialty:"Family Medicine",contact:"Dr. Sarah Chen",providers:4,phone:"(813) 555-0101",email:"s.chen@lakewood.com",status:"active",lastContact:"2026-02-20",nextFollowUp:"2026-03-01",notes:"EHR migration underway. Staff turnover issue with front desk. Revenue cycle needs review.",challenges:["EHR Migration","Staff Retention","Revenue Cycle"],communications:["phone","email"],interactions:[{type:"call",date:"2026-02-20",note:"Discussed EHR timeline. Follow up on training schedule."},{type:"email",date:"2026-02-10",note:"Sent staffing framework and sample job descriptions."}],deliverables:[{name:"Revenue Cycle Audit Report",due:"2026-03-05",done:false},{name:"Staff Retention Policy Template",due:"2026-02-28",done:true}]},
+  {id:2,name:"Westside Pediatric Group",specialty:"Pediatrics",contact:"Dr. Marcus Webb",providers:6,phone:"(813) 555-0202",email:"m.webb@westside.com",status:"at-risk",lastContact:"2026-02-05",nextFollowUp:"2026-02-27",notes:"Billing disputes with payer. Considering dropping two insurers. Owner stressed.",challenges:["Payer Disputes","Billing","Strategic Planning"],communications:["phone","visit"],interactions:[{type:"visit",date:"2026-02-05",note:"On-site visit. Multiple claim denials observed."},{type:"call",date:"2026-01-22",note:"Owner frustrated with payer relations. Needs action plan."}],deliverables:[{name:"Payer Contract Analysis",due:"2026-02-24",done:false},{name:"Action Plan Presentation",due:"2026-03-10",done:false}]},
+  {id:3,name:"Harbor Internal Medicine",specialty:"Internal Medicine",contact:"Dr. Rita Patel",providers:3,phone:"(813) 555-0303",email:"r.patel@harbor.com",status:"active",lastContact:"2026-02-22",nextFollowUp:"2026-03-08",notes:"Expanding to second location. Need lease review support and staffing plan.",challenges:["Expansion Planning","Staffing","Financial Modeling"],communications:["email","zoom"],interactions:[{type:"email",date:"2026-02-22",note:"Shared expansion checklist. Awaiting lease terms."}],deliverables:[{name:"Expansion Feasibility Model",due:"2026-03-12",done:false},{name:"Staffing Plan - Site 2",due:"2026-03-20",done:false}]},
+  {id:4,name:"Suncoast Cardiology",specialty:"Cardiology",contact:"Dr. James Okafor",providers:8,phone:"(813) 555-0404",email:"j.okafor@suncoast.com",status:"pending",lastContact:"2026-02-15",nextFollowUp:"2026-03-03",notes:"AI documentation tool implementation. Providers resistant to change.",challenges:["AI Adoption","Change Management","Provider Buy-in"],communications:["email","phone"],interactions:[{type:"call",date:"2026-02-15",note:"Resistance from 3 senior physicians on AI scribe."}],deliverables:[{name:"AI Adoption Roadmap",due:"2026-03-01",done:false},{name:"Change Management Deck",due:"2026-03-15",done:false}]},
+  {id:5,name:"Northdale OB/GYN Associates",specialty:"OB/GYN",contact:"Dr. Priya Sharma",providers:5,phone:"(813) 555-0505",email:"p.sharma@northdale.com",status:"active",lastContact:"2026-02-24",nextFollowUp:"2026-03-10",notes:"Implementing new patient portal. Good engagement. Wants benchmarking.",challenges:["Patient Engagement","Technology","Benchmarking"],communications:["email","zoom"],interactions:[{type:"email",date:"2026-02-24",note:"Portal rollout 60% complete."}],deliverables:[{name:"Patient Portal Benchmark Report",due:"2026-03-08",done:true},{name:"Q1 KPI Summary",due:"2026-03-31",done:false}]},
+  {id:6,name:"Palm Ridge Orthopedics",specialty:"Orthopedics",contact:"Dr. Kevin Liu",providers:7,phone:"(813) 555-0606",email:"k.liu@palmridge.com",status:"pending",lastContact:"2026-02-12",nextFollowUp:"2026-03-04",notes:"Surgical volume down 18% YOY. Referral network weakening.",challenges:["Referral Development","Competitive Response","Volume Recovery"],communications:["phone","visit"],interactions:[{type:"visit",date:"2026-02-12",note:"ASC competition is real. Need referral strategy within 30 days."}],deliverables:[{name:"Referral Strategy Plan",due:"2026-03-04",done:false}]},
+  {id:7,name:"Bayshore Dermatology",specialty:"Dermatology",contact:"Dr. Amanda Torres",providers:3,phone:"(813) 555-0707",email:"a.torres@bayshore.com",status:"active",lastContact:"2026-02-21",nextFollowUp:"2026-03-14",notes:"Adding aesthetics line. Needs marketing and financial projections.",challenges:["Service Line Expansion","Marketing","Financial Projections"],communications:["email","text"],interactions:[{type:"email",date:"2026-02-21",note:"Sent competitive landscape for medical spa market."}],deliverables:[{name:"Aesthetics P&L Model",due:"2026-03-10",done:false},{name:"Marketing Brief",due:"2026-03-18",done:false}]},
+  {id:8,name:"Central Florida Pediatrics",specialty:"Pediatrics",contact:"Dr. Thomas Grant",providers:4,phone:"(813) 555-0808",email:"t.grant@cfpeds.com",status:"active",lastContact:"2026-02-18",nextFollowUp:"2026-03-07",notes:"Succession planning. Owner retiring in 18 months.",challenges:["Succession Planning","Practice Valuation","Transition"],communications:["phone","email"],interactions:[{type:"call",date:"2026-02-18",note:"Initial succession discussion. Owner wants clean exit."}],deliverables:[{name:"Succession Roadmap Draft",due:"2026-03-20",done:false}]},
+  {id:9,name:"Riverside Urgent Care",specialty:"Urgent Care",contact:"Dr. Leon Brooks",providers:5,phone:"(813) 555-0909",email:"l.brooks@riverside.com",status:"active",lastContact:"2026-02-19",nextFollowUp:"2026-03-06",notes:"Operational review complete. Technology stack upgrade recommended.",challenges:["Technology Upgrade","Workflow Efficiency","Growth Strategy"],communications:["phone","email"],interactions:[{type:"call",date:"2026-02-19",note:"Discussed EMR upgrade timeline."}],deliverables:[{name:"Technology Roadmap",due:"2026-03-15",done:false}]},
+  {id:10,name:"Gulf Coast Endocrinology",specialty:"Endocrinology",contact:"Dr. Nina Shah",providers:3,phone:"(813) 555-1010",email:"n.shah@gulfcoast.com",status:"pending",lastContact:"2026-02-10",nextFollowUp:"2026-03-02",notes:"New provider onboarding. Panel capacity at 68%.",challenges:["Panel Capacity","Provider Onboarding","Revenue Growth"],communications:["email"],interactions:[{type:"email",date:"2026-02-10",note:"Sent onboarding checklist and panel management guide."}],deliverables:[{name:"Onboarding Plan",due:"2026-03-05",done:false},{name:"Panel Growth Strategy",due:"2026-03-22",done:false}]},
+];
+
+// Fill to 20 practices
+const extraPractices = [
+  ["Brandon Family Health","Family Medicine","Dr. Eric Moore",4,"active","(813) 555-1111"],
+  ["Tampa Bay Gastroenterology","Gastroenterology","Dr. Cynthia Reyes",5,"active","(813) 555-1212"],
+  ["Clearwater Neurology Center","Neurology","Dr. Alan Park",4,"at-risk","(727) 555-1313"],
+  ["Sun City Rheumatology","Rheumatology","Dr. Beth Nguyen",3,"active","(813) 555-1414"],
+  ["Lakeland Pulmonology Group","Pulmonology","Dr. Omar Hassan",4,"active","(863) 555-1515"],
+  ["New Tampa Women's Health","OB/GYN","Dr. Grace Kim",5,"active","(813) 555-1616"],
+  ["Valrico Sports Medicine","Sports Medicine","Dr. Jake Torres",3,"pending","(813) 555-1717"],
+  ["South Tampa Oncology","Oncology","Dr. Rachel Stone",6,"active","(813) 555-1818"],
+  ["Apollo Beach Primary Care","Family Medicine","Dr. Sam Patel",3,"active","(813) 555-1919"],
+  ["Westchase Ophthalmology","Ophthalmology","Dr. Fiona Li",4,"active","(813) 555-2020"],
+];
+extraPractices.forEach(([name,spec,contact,prov,status,phone],i)=>{
+  clients.push({id:11+i,name,specialty:spec,contact,providers:prov,phone,email:"",status,
+    lastContact:"2026-02-"+(10+i).toString().padStart(2,'0'),
+    nextFollowUp:"2026-03-"+(5+i).toString().padStart(2,'0'),
+    notes:"Ongoing engagement. Regular check-ins scheduled.",
+    challenges:["Operations","Growth","Quality"],communications:["phone","email"],
+    interactions:[{type:"call",date:"2026-02-15",note:"Quarterly review call."}],
+    deliverables:[{name:"Q1 Strategy Session",due:"2026-03-"+(10+i).toString().padStart(2,'0'),done:false}]});
+});
+
+function formatDate(d){
+  const diff=Math.ceil((new Date(d)-today)/86400000);
+  if(diff<0)return{label:`${Math.abs(diff)}d overdue`,cls:'fu-overdue'};
+  if(diff<=3)return{label:`In ${diff}d`,cls:'fu-soon'};
+  return{label:new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'}),cls:'fu-ok'};
+}
+function formatShort(d){return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+function getDueCls(d){const diff=Math.ceil((new Date(d)-today)/86400000);return diff<0?'overdue':diff<=5?'soon':'ok'}
+function getDueLbl(d){const diff=Math.ceil((new Date(d)-today)/86400000);if(diff<0)return`${Math.abs(diff)}d late`;if(diff===0)return'Today';if(diff<=5)return`${diff}d`;return formatShort(d)}
+
+/* ═══════════════════════════════════════════════════
+   CRM VIEW RENDERING
+═══════════════════════════════════════════════ */
+function crmShowView(view, el){
+  document.querySelectorAll('.crm-nav-item').forEach(n=>n.classList.remove('active'));
+  if(el)el.classList.add('active');
+  const c=document.getElementById('crm-content');
+  const overdue=clients.filter(c=>new Date(c.nextFollowUp)<today).length;
+  const allDels=clients.flatMap(c=>c.deliverables);
+  const openDels=allDels.filter(d=>!d.done).length;
+  document.getElementById('fu-badge').textContent=overdue;
+  document.getElementById('del-badge').textContent=openDels;
+
+  if(view==='dashboard')renderCrmDashboard(c);
+  else if(view==='clients')renderCrmClients(c);
+  else if(view==='followups'){
+    document.getElementById('crm-view-title').textContent='Follow-Up Tracker';
+    document.getElementById('crm-view-date').textContent='Sorted by urgency';
+    const sorted=[...clients].sort((a,b)=>new Date(a.nextFollowUp)-new Date(b.nextFollowUp));
+    c.innerHTML=`<div class="crm-panel"><div class="crm-panel-header"><div class="crm-panel-title">◷ All Follow-Ups</div></div>${renderCrmTable(sorted)}</div>`;
+    attachTableClicks(c);
+  } else if(view==='deliverables'){
+    document.getElementById('crm-view-title').textContent='Deliverables';
+    document.getElementById('crm-view-date').textContent='All open deliverables';
+    const allD=clients.flatMap(c=>c.deliverables.map(d=>({...d,clientName:c.name,clientId:c.id})));
+    const open=allD.filter(d=>!d.done).sort((a,b)=>new Date(a.due)-new Date(b.due));
+    const done=allD.filter(d=>d.done);
+    c.innerHTML=`<div class="crm-panel"><div class="crm-panel-header"><div class="crm-panel-title">◻ Deliverables</div><span class="crm-panel-count">${open.length} open</span></div>
+      ${[...open,...done].map(d=>`<div class="crm-del-item"><div class="crm-checkbox ${d.done?'done':''}"></div><div style="flex:1"><div class="crm-del-name" style="${d.done?'text-decoration:line-through;opacity:.45':''}">${d.name}</div><div class="crm-del-client">${d.clientName}</div></div><div class="crm-del-due ${getDueCls(d.due)}">${d.done?'Done':getDueLbl(d.due)}</div></div>`).join('')}
+    </div>`;
+  }
+}
+
+function renderCrmDashboard(container){
+  document.getElementById('crm-view-title').textContent='Command Dashboard';
+  document.getElementById('crm-view-date').textContent=today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const overdue=clients.filter(c=>new Date(c.nextFollowUp)<today).length;
+  const atRisk=clients.filter(c=>c.status==='at-risk').length;
+  const pending=clients.filter(c=>c.status==='pending').length;
+  const allDels=clients.flatMap(c=>c.deliverables);
+  const openDels=allDels.filter(d=>!d.done).length;
+
+  const alerts=[
+    ...clients.filter(c=>c.status==='at-risk').map(c=>({type:'red',icon:'⚠',title:c.name,sub:'At-risk — action required',time:formatShort(c.nextFollowUp)})),
+    ...clients.filter(c=>new Date(c.nextFollowUp)<today).map(c=>({type:'yellow',icon:'◷',title:`Follow-up overdue: ${c.name}`,sub:`Last contact ${formatShort(c.lastContact)}`,time:'Overdue'})),
+  ].slice(0,5);
+
+  const topDels=allDels.filter(d=>!d.done).sort((a,b)=>new Date(a.due)-new Date(b.due)).slice(0,6).map(d=>{
+    const cl=clients.find(c=>c.deliverables.includes(d));
+    return{...d,clientName:cl?.name||''};
+  });
+
+  container.innerHTML=`
+    <div class="crm-stats-row">
+      <div class="crm-stat-card blue"><div class="crm-stat-label">Total Practices</div><div class="crm-stat-value">${clients.length}</div><div class="crm-stat-sub"><span class="live-dot"></span>Active clients</div></div>
+      <div class="crm-stat-card red"><div class="crm-stat-label">Overdue Follow-Ups</div><div class="crm-stat-value">${overdue}</div><div class="crm-stat-sub">Require action</div></div>
+      <div class="crm-stat-card yellow"><div class="crm-stat-label">Open Deliverables</div><div class="crm-stat-value">${openDels}</div><div class="crm-stat-sub">${allDels.filter(d=>d.done).length} completed</div></div>
+      <div class="crm-stat-card ${atRisk>0?'red':'green'}"><div class="crm-stat-label">At-Risk Practices</div><div class="crm-stat-value">${atRisk}</div><div class="crm-stat-sub">${pending} need attention</div></div>
+    </div>
+    <div class="crm-two-col">
+      <div class="crm-panel">
+        <div class="crm-panel-header"><div class="crm-panel-title">Practice Roster</div><span class="crm-panel-count">${clients.length} practices</span><div class="crm-panel-action"><button class="btn-crm-ghost" onclick="crmShowView('clients',null)">View All →</button></div></div>
+        ${renderCrmTable(clients.slice(0,7))}
+      </div>
+      <div class="crm-right-panels">
+        <div class="crm-panel">
+          <div class="crm-panel-header"><div class="crm-panel-title">⚡ Alerts</div><span class="crm-panel-count">${alerts.length}</span></div>
+          ${alerts.length?alerts.map(a=>`<div class="crm-alert-item"><div class="crm-alert-icon ${a.type}">${a.icon}</div><div style="flex:1"><div class="crm-alert-title">${a.title}</div><div class="crm-alert-sub">${a.sub}</div></div><div class="crm-alert-time">${a.time}</div></div>`).join(''):'<div style="padding:20px;text-align:center;color:var(--crm-text3);font-size:13px">All clear ✓</div>'}
+        </div>
+        <div class="crm-panel">
+          <div class="crm-panel-header"><div class="crm-panel-title">◻ Deliverables</div><span class="crm-panel-count">${openDels} open</span></div>
+          ${topDels.map(d=>`<div class="crm-del-item"><div class="crm-checkbox"></div><div style="flex:1"><div class="crm-del-name">${d.name}</div><div class="crm-del-client">${d.clientName}</div></div><div class="crm-del-due ${getDueCls(d.due)}">${getDueLbl(d.due)}</div></div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  attachTableClicks(container);
+}
+
+function renderCrmClients(container){
+  document.getElementById('crm-view-title').textContent='All Practices';
+  document.getElementById('crm-view-date').textContent=`${clients.length} practices under management`;
+  container.innerHTML=`<div class="crm-panel"><div class="crm-panel-header"><div class="crm-panel-title">Practice Roster</div><span class="crm-panel-count">${clients.length} total</span></div>${renderCrmTable(clients)}</div>`;
+  attachTableClicks(container);
+}
+
+function renderCrmTable(list){
+  return`<div class="crm-table-head"><div class="crm-th">Practice</div><div class="crm-th">Status</div><div class="crm-th">Specialty</div><div class="crm-th">Next Follow-Up</div><div class="crm-th">Last Contact</div><div class="crm-th">Portal</div></div>`+
+  list.map(c=>{
+    const fu=formatDate(c.nextFollowUp);
+    return`<div class="crm-table-row" data-id="${c.id}">
+      <div><div class="crm-client-name">${c.name}</div><div class="crm-client-type">${c.contact} · ${c.providers} providers</div></div>
+      <div><span class="crm-status-pill ${c.status}">${c.status==='at-risk'?'At Risk':c.status==='pending'?'Attention':'Active'}</span></div>
+      <div class="crm-td">${c.specialty}</div>
+      <div class="crm-td mono ${fu.cls}">${fu.label}</div>
+      <div class="crm-td mono">${formatShort(c.lastContact)}</div>
+      <div><button class="btn-portal-launch" onclick="event.stopPropagation();launchPortal(${c.id})">Open Portal <span class="arrow">↗</span></button></div>
+    </div>`;
+  }).join('');
+}
+
+function attachTableClicks(container){
+  container.querySelectorAll('.crm-table-row').forEach(row=>{
+    row.addEventListener('click',()=>openCrmModal(parseInt(row.dataset.id)));
+  });
+}
+
+function crmFilterClients(q){
+  if(!q){crmShowView('clients',null);return}
+  const filtered=clients.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())||c.specialty.toLowerCase().includes(q.toLowerCase())||c.contact.toLowerCase().includes(q.toLowerCase()));
+  const cont=document.getElementById('crm-content');
+  document.getElementById('crm-view-title').textContent=`Search: "${q}"`;
+  document.getElementById('crm-view-date').textContent=`${filtered.length} results`;
+  cont.innerHTML=`<div class="crm-panel"><div class="crm-panel-header"><div class="crm-panel-title">Search Results</div></div>${renderCrmTable(filtered)}</div>`;
+  attachTableClicks(cont);
+}
+
+/* ═══════════════════════════════════════════════════
+   CRM MODAL
+═══════════════════════════════════════════════ */
+let activeCrmClientId=null;
+
+function openCrmModal(id){
+  activeCrmClientId=id;
+  const c=clients.find(x=>x.id===id);
+  if(!c)return;
+  document.getElementById('crm-modal-name').textContent=c.name;
+  document.getElementById('crm-modal-meta').textContent=`${c.specialty} · ${c.providers} providers · ${c.contact}`;
+  document.querySelectorAll('.crm-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+  renderCrmModalTab(c,'overview');
+  document.getElementById('crm-detail-modal').classList.add('open');
+}
+
+function renderCrmModalTab(c,tab){
+  const body=document.getElementById('crm-modal-body');
+  if(tab==='overview'){
+    const fu=formatDate(c.nextFollowUp);
+    body.innerHTML=`<div class="crm-modal-section"><div class="crm-modal-section-title">Practice Details</div>
+      <div class="crm-modal-grid">
+        <div class="crm-modal-field"><label>Status</label><select><option ${c.status==='active'?'selected':''}>active</option><option ${c.status==='pending'?'selected':''}>pending</option><option ${c.status==='at-risk'?'selected':''}>at-risk</option></select></div>
+        <div class="crm-modal-field"><label>Next Follow-Up</label><input type="date" value="${c.nextFollowUp}"></div>
+        <div class="crm-modal-field"><label>Contact</label><input value="${c.contact}"></div>
+        <div class="crm-modal-field"><label>Phone</label><input value="${c.phone}"></div>
+        <div class="crm-modal-field"><label>Email</label><input value="${c.email}"></div>
+        <div class="crm-modal-field"><label>Providers</label><input type="number" value="${c.providers}"></div>
+      </div></div>
+      <div class="crm-modal-section"><div class="crm-modal-section-title">Context & Notes</div><div class="crm-note-area"><textarea>${c.notes}</textarea></div></div>`;
+  } else if(tab==='challenges'){
+    body.innerHTML=`<div class="crm-modal-section"><div class="crm-modal-section-title">Active Challenges</div>
+      ${c.challenges.map(ch=>`<div class="crm-challenge-tag">◈ <span style="flex:1">${ch}</span><span style="color:var(--crm-text3);cursor:pointer;font-size:11px">✕</span></div>`).join('')}
+      <div class="crm-challenge-tag" style="cursor:pointer;color:var(--crm-accent);border-style:dashed">+ Add Challenge</div></div>`;
+  } else if(tab==='interactions'){
+    body.innerHTML=`<div class="crm-modal-section"><div class="crm-modal-section-title">Log Interaction</div>
+      <div class="crm-modal-grid"><div class="crm-modal-field"><label>Type</label><select><option>call</option><option>email</option><option>visit</option><option>text</option></select></div><div class="crm-modal-field"><label>Date</label><input type="date" value="${new Date().toISOString().split('T')[0]}"></div></div>
+      <div class="crm-note-area" style="margin-top:10px"><textarea placeholder="Notes…"></textarea></div>
+      <button class="btn-crm-primary" style="margin-top:10px;font-size:12px">Log Interaction</button></div>
+    <div class="crm-modal-section"><div class="crm-modal-section-title">History</div>
+      ${c.interactions.map(i=>`<div class="crm-log-entry"><div class="crm-log-dot" style="background:${i.type==='call'?'var(--crm-accent2)':i.type==='email'?'var(--crm-accent)':'var(--crm-accent3)'}"></div><div><div class="crm-log-text">${i.note}</div><div class="crm-log-meta">${i.type.toUpperCase()} · ${formatShort(i.date)}</div></div></div>`).join('')}
+    </div>`;
+  } else if(tab==='deliverables'){
+    body.innerHTML=`<div class="crm-modal-section"><div class="crm-modal-section-title">Deliverables</div>
+      ${c.deliverables.map(d=>`<div class="crm-del-item" style="padding:10px 0"><div class="crm-checkbox ${d.done?'done':''}"></div><div style="flex:1;padding-left:4px"><div class="crm-del-name" style="${d.done?'text-decoration:line-through;opacity:.45':''}">${d.name}</div></div><div class="crm-del-due ${getDueCls(d.due)}">${getDueLbl(d.due)}</div></div>`).join('')}
+      <div class="crm-del-item" style="cursor:pointer;color:var(--crm-accent);padding:10px 0">+ Add Deliverable</div></div>`;
+  }
+}
+
+function switchCrmTab(el,tab){
+  document.querySelectorAll('.crm-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  const c=clients.find(x=>x.id===activeCrmClientId);
+  if(c)renderCrmModalTab(c,tab);
+}
+
+function closeCrmModal(){document.getElementById('crm-detail-modal').classList.remove('open')}
+
+function launchPortalFromModal(){
+  closeCrmModal();
+  launchPortal(activeCrmClientId);
+}
+
+/* ═══════════════════════════════════════════════════
+   ADD CLIENT
+═══════════════════════════════════════════════ */
+function openAddModal(){document.getElementById('crm-add-modal').classList.add('open')}
+function closeAddModal(){document.getElementById('crm-add-modal').classList.remove('open')}
+function addClient(){
+  const name=document.getElementById('new-name').value.trim();
+  if(!name){alert('Practice name required.');return}
+  clients.push({id:clients.length+1,name,specialty:document.getElementById('new-specialty').value,contact:document.getElementById('new-contact').value||'Unknown',providers:parseInt(document.getElementById('new-providers').value)||1,phone:document.getElementById('new-phone').value||'',email:document.getElementById('new-email').value||'',status:document.getElementById('new-status').value,lastContact:new Date().toISOString().split('T')[0],nextFollowUp:document.getElementById('new-followup').value||new Date(Date.now()+7*86400000).toISOString().split('T')[0],notes:document.getElementById('new-notes').value||'',challenges:[],communications:['email','phone'],interactions:[],deliverables:[]});
+  closeAddModal();
+  crmShowView('dashboard',document.querySelector('.crm-nav-item'));
+}
+
+/* ═══════════════════════════════════════════════════
+   EXCEL SYNC
+═══════════════════════════════════════════════ */
+let excelPracticeData={};
+
+function handleExcelUpload(evt){
+  const file=evt.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const finSheet   = wb.Sheets['Financial'];
+      const opsSheet   = wb.Sheets['Operations'];
+      const staffSheet = wb.Sheets['Staffing'];
+      const mtgSheet   = wb.Sheets['Meetings'];
+
+      const finRows   = finSheet   ? XLSX.utils.sheet_to_json(finSheet,  {defval:0}) : [];
+      const opsRows   = opsSheet   ? XLSX.utils.sheet_to_json(opsSheet,  {defval:0}) : [];
+      const staffRows = staffSheet ? XLSX.utils.sheet_to_json(staffSheet,{defval:0}) : [];
+      const mtgRows   = mtgSheet   ? XLSX.utils.sheet_to_json(mtgSheet,  {defval:'',raw:false}) : [];
+
+      // Index financial / ops / staff by practice ID
+      finRows.forEach(r=>{
+        const pid=r['Practice ID'];
+        if(!excelPracticeData[pid])excelPracticeData[pid]={};
+        excelPracticeData[pid].fin=r;
+      });
+      opsRows.forEach(r=>{
+        const pid=r['Practice ID'];
+        if(!excelPracticeData[pid])excelPracticeData[pid]={};
+        excelPracticeData[pid].ops=r;
+      });
+      staffRows.forEach(r=>{
+        const pid=r['Practice ID'];
+        if(!excelPracticeData[pid])excelPracticeData[pid]={};
+        excelPracticeData[pid].staff=r;
+      });
+
+      // ── Parse Meetings sheet ─────────────────────────────────────────
+      if(mtgRows.length){
+        // Keep any manually-entered meetings that don't have an Excel ID
+        const manualOnly = meetings.filter(m=>!m.fromExcel);
+        const imported = mtgRows
+          .filter(r => r['Practice ID'] && r['Meeting Date'])
+          .map((r,i) => {
+            // Normalise date — Excel may give a Date object, string, or serial
+            let dateStr = '';
+            const raw = r['Meeting Date'];
+            if(raw instanceof Date){
+              dateStr = raw.toISOString().split('T')[0];
+            } else if(typeof raw === 'string' && raw.match(/\d{4}-\d{2}-\d{2}/)){
+              dateStr = raw.substring(0,10);
+            } else if(typeof raw === 'number'){
+              // Excel serial date → JS Date
+              const jsDate = new Date(Math.round((raw - 25569)*86400*1000));
+              dateStr = jsDate.toISOString().split('T')[0];
+            } else {
+              dateStr = String(raw).substring(0,10);
+            }
+
+            // Normalise time
+            let timeStr = '09:00';
+            const rawTime = r['Meeting Time'];
+            if(rawTime){
+              const ts = String(rawTime);
+              if(ts.match(/^\d{1,2}:\d{2}/)) timeStr = ts.substring(0,5);
+            }
+
+            // Collect agenda items (Agenda Item 1-5 columns)
+            const agendaFree = [1,2,3,4,5]
+              .map(n=>String(r[`Agenda Item ${n}`]||'').trim())
+              .filter(Boolean);
+
+            // Map type code to MTG_TYPES keys
+            const typeRaw = String(r['Meeting Type']||'mm').toLowerCase().trim();
+            const typeKey = ['ar','pm','mm'].includes(typeRaw) ? typeRaw : 'mm';
+
+            // Match default agenda IDs when agenda items are blank
+            const agendaIds = agendaFree.length
+              ? []   // will store free-text; handled separately
+              : (MTG_TYPES[typeKey]?.defaultAgenda||[]).map(a=>a.id);
+
+            const pid = Number(r['Practice ID']);
+            return {
+              id: 10000 + i,          // high IDs won't clash with manual ones
+              clientId: pid,
+              type: typeKey,
+              date: dateStr,
+              time: timeStr,
+              location: String(r['Location']||'').trim() || 'TBD',
+              attendees: String(r['Attendees']||'').trim(),
+              status: String(r['Status']||'scheduled').toLowerCase().trim(),
+              notes: String(r['Pre-Meeting Notes']||'').trim(),
+              postNotes: String(r['Post-Meeting Notes']||'').trim(),
+              agenda: agendaIds,
+              agendaFreeText: agendaFree,  // free-text items from Excel
+              completed: String(r['Status']||'').toLowerCase()==='completed',
+              fromExcel: true,
+              excelRow: i+1,
+            };
+          });
+
+        // Merge: replace all excel-sourced meetings, keep manual ones
+        meetings = [...manualOnly, ...imported];
+        nextMtgId = Math.max(...meetings.map(m=>m.id), nextMtgId) + 1;
+
+        showToast(`✓ Synced ${finRows.length} practices · ${imported.length} meetings from Excel`);
+      } else {
+        showToast(`✓ Excel synced — ${finRows.length} practices loaded (no Meetings sheet found)`);
+      }
+
+      excelSynced = true;
+
+      // Refresh meetings view if currently visible
+      const title = document.getElementById('crm-view-title');
+      if(title && title.textContent === 'Meeting Planner'){
+        renderMeetingsView(document.getElementById('crm-content'));
+      }
+
+    } catch(err){
+      console.error(err);
+      showToast('❌ Could not parse Excel: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showToast(msg){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;right:24px;background:var(--crm-bg3);border:1px solid var(--crm-border2);color:var(--crm-text);padding:12px 20px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.4);font-family:var(--body);animation:fadeUp .3s ease';
+  t.textContent=msg;document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+
+/* ═══════════════════════════════════════════════════
+   PORTAL LAUNCH
+═══════════════════════════════════════════════ */
+let portalClient=null;
+
+function launchPortal(clientId){
+  const c=clients.find(x=>x.id===clientId);
+  if(!c)return;
+
+  // Show transition
+  const ov=document.getElementById('transition-overlay');
+  document.getElementById('transition-label').textContent=`Opening ${c.name}`;
+  ov.classList.add('show');
+
+  setTimeout(()=>{
+    // Build portal data
+    portalClient=buildPortalData(c);
+
+    // Switch screens
+    document.getElementById('crm-screen').classList.remove('active');
+    document.getElementById('portal-screen').classList.add('active');
+
+    // Reset portal tabs
+    document.querySelectorAll('.p-tab').forEach((t,i)=>t.classList.toggle('active',i===0));
+    document.querySelectorAll('.p-tab-panel').forEach((p,i)=>p.classList.toggle('active',i===0));
+
+    // Render portal
+    renderPortal();
+
+    ov.classList.remove('show');
+  },500);
+}
+
+function backToCRM(){
+  const ov=document.getElementById('transition-overlay');
+  document.getElementById('transition-label').textContent='Back to CRM';
+  ov.classList.add('show');
+  setTimeout(()=>{
+    document.getElementById('portal-screen').classList.remove('active');
+    document.getElementById('crm-screen').classList.add('active');
+    ov.classList.remove('show');
+  },350);
+}
+
+function buildPortalData(c){
+  // Use Excel data if available, otherwise generate realistic demo data
+  const ex=excelPracticeData[c.id]||{};
+  const fin=ex.fin||{};
+  const ops=ex.ops||{};
+  const stf=ex.staff||{};
+
+  const seed=c.id*9871;
+  const rng=makeRng(seed);
+
+  const MONTHS_LONG=["Sep-25","Oct-25","Nov-25","Dec-25","Jan-26","Feb-26"];
+  const MONTHS=["Sep","Oct","Nov","Dec","Jan","Feb"];
+
+  let rev,coll;
+  if(ex.fin){
+    rev=MONTHS_LONG.map(m=>Number(fin[`Rev ${m}`]||0));
+    coll=MONTHS_LONG.map(m=>Number(fin[`Coll ${m}`]||0));
+  } else {
+    const base=280000+rng(300000);
+    rev=Array.from({length:6},()=>base+rng(60000)-30000);
+    const cr=0.86+rng(10)/100;
+    coll=rev.map(v=>Math.floor(v*cr));
+  }
+
+  const totRev=rev.reduce((a,b)=>a+b,0);
+  const totColl=coll.reduce((a,b)=>a+b,0);
+  const crRate=totRev>0?(totColl/totRev*100).toFixed(1)+'%':'—';
+  const latestRev=rev[5]||rev[4]||0;
+
+  const payers=[
+    {name:"Medicare",pct:Number(fin['Payer Medicare %']||36+rng(8)-4),color:"#1d6fb8"},
+    {name:"Commercial",pct:Number(fin['Payer Commercial %']||30+rng(8)-4),color:"#00917c"},
+    {name:"Medicaid",pct:Number(fin['Payer Medicaid %']||18+rng(6)-3),color:"#7c3aed"},
+    {name:"Self-Pay",pct:Number(fin['Payer Self-Pay %']||12+rng(4)-2),color:"#d97706"},
+  ];
+
+  const arDays=Number(fin['AR Days']||28+rng(25));
+  const ar=[
+    {bucket:"0–30 days",amount:"$"+Math.floor(Number(fin['AR 0-30'])||35000+rng(20000)).toLocaleString(),pct:52,color:"#059669"},
+    {bucket:"31–60 days",amount:"$"+Math.floor(Number(fin['AR 31-60'])||14000+rng(10000)).toLocaleString(),pct:24,color:"#d97706"},
+    {bucket:"61–90 days",amount:"$"+Math.floor(Number(fin['AR 61-90'])||7000+rng(5000)).toLocaleString(),pct:14,color:"#f59e0b"},
+    {bucket:"90+ days",amount:"$"+Math.floor(Number(fin['AR 90+'])||3000+rng(4000)).toLocaleString(),pct:10,color:"#dc2626"},
+  ];
+
+  const expenses={
+    "Staff & Salaries":Number(fin['Staff & Salaries %']||49),
+    "Supplies & Drugs":Number(fin['Supplies & Drugs %']||17),
+    "Rent & Facilities":Number(fin['Rent & Facilities %']||13),
+    "Technology":Number(fin['Technology %']||9),
+    "Other":Number(fin['Other Expenses %']||12),
+  };
+
+  const totalVisits=Number(ops['Total Visits'])||1200+rng(1600);
+  const newPat=Number(ops['New Patients'])||120+rng(160);
+  const retPat=Number(ops['Return Visits'])||totalVisits-newPat;
+  const noShow=Number(ops['No-Show Rate %']||(5.5+rng(70)/10)).toFixed(1);
+  const cancel=Number(ops['Cancellation Rate %']||(3.5+rng(50)/10)).toFixed(1);
+  const util=Number(ops['Utilization Rate %'])||74+rng(22);
+  const wait=Number(ops['Avg Wait Days (New Pt)'])||4+rng(11);
+  const sat=Number(ops['Patient Satisfaction (1-5)'])||(3.8+rng(12)/10).toFixed(1);
+  const visitTrend=MONTHS_LONG.map(m=>Number(ops[`${m} Visits`]||ops[`${m.replace('-',' ')} Visits`])||Math.floor(totalVisits*0.14+rng(totalVisits*0.1)));
+
+  const totalStaff=Number(stf['Total Headcount'])||c.providers+(3+rng(14));
+  const turnover=Number(stf['Annual Turnover Rate %'])||9+rng(16);
+  const openRoles=Number(stf['Open Roles'])||rng(3);
+  const tenure=Number(stf['Avg Tenure (yrs)'])||(1.2+rng(36)/10).toFixed(1);
+
+  return {
+    id:c.id,name:c.name,specialty:c.specialty,contact:c.contact,providers:c.providers,
+    status:c.status,
+    healthLabel:c.status==='active'?'Healthy':c.status==='at-risk'?'At Risk':'Needs Attention',
+    healthBadge:c.status==='active'?'green':c.status==='at-risk'?'red':'amber',
+    alertMsg:c.status==='at-risk'?'⚠ Action Required — please review with your MedConsult advisor.':
+             c.status==='pending'?'Pending action items from last consultation.':null,
+    notes:c.notes,challenges:c.challenges,
+    actionItems:c.deliverables.filter(d=>!d.done).map(d=>d.name).slice(0,3),
+    noteDate:'Current Period',
+    financial:{rev,coll,months:MONTHS,totalRevenue:latestRev?"$"+Math.round(latestRev/1000)+"K":"—",
+      collectionRate:crRate,arDays,payers,ar,expenses},
+    operations:{totalVisits,newPatients:newPat,returnVisits:retPat,
+      noShowRate:noShow+"%",cancelRate:cancel+"%",utilizationRate:util+"%",
+      avgWaitDays:wait,patientSat:sat+"/5",visitTrend,
+      providers:[
+        {name:"Lead Provider",wrvu:1600+rng(500),target:2000},
+        {name:"Associate",wrvu:1300+rng(400),target:2000},
+        {name:"Advanced Practice",wrvu:800+rng(300),target:1200},
+      ]},
+    staffing:{total:totalStaff,providers:c.providers,clinical:3+rng(7),admin:2+rng(5),management:1+rng(2),
+      turnoverRate:turnover.toFixed(1)+"%",openRoles,avgTenure:tenure+" yrs",
+      staff:[
+        {name:c.contact,role:"Medical Director",initials:c.contact.split(' ').map(w=>w[0]).join('').slice(0,2),color:"#1d6fb8"},
+        {name:"Associate Provider",role:"Physician",initials:"AP",color:"#00917c"},
+        {name:"Advanced Practice",role:"NP/PA",initials:"NP",color:"#7c3aed"},
+        {name:"Office Manager",role:"Administration",initials:"OM",color:"#d97706"},
+      ]},
+  };
+}
+
+function makeRng(seed){return(n)=>{seed=(seed*1664525+1013904223)&0xffffffff;return Math.abs(seed)%n}}
+
+/* ═══════════════════════════════════════════════════
+   PORTAL RENDER
+═══════════════════════════════════════════════ */
+function renderPortal(){
+  const p=portalClient;
+  document.getElementById('p-practice-name').textContent=p.name;
+  const badge=document.getElementById('p-health-badge');
+  badge.textContent=p.healthLabel;badge.className='p-badge '+p.healthBadge;
+
+  document.getElementById('p-alert-area').innerHTML=
+    p.alertMsg?`<div class="p-alert-strip">${p.alertMsg}</div>`:'';
+  document.getElementById('p-data-bar').innerHTML=
+    excelSynced?`<div class="p-data-bar excel">📊 Data synced from Excel — MedConsult_Master_Data.xlsx</div>`:
+    `<div class="p-data-bar demo">ℹ Showing illustrative data — upload your Excel file via the CRM sidebar to load real numbers</div>`;
+
+  document.getElementById('p-overview-title').textContent=p.name;
+  document.getElementById('p-overview-sub').textContent=`${p.specialty} · ${p.providers} providers · ${p.contact}`;
+
+  renderPKPIs();renderPRevChart('p-rev-chart');renderPDonut();
+  renderPVolumeMetrics();renderPSchedMetrics();renderPARTable('p-ar-table');
+  renderPFinancialTab();renderPOpsTab();renderPStaffingTab();renderPNotesTab();
+}
+
+function renderPKPIs(){
+  const f=portalClient.financial,o=portalClient.operations;
+  const cr=parseFloat(f.collectionRate);
+  document.getElementById('p-kpi-grid').innerHTML=[
+    {label:"Monthly Revenue",icon:"💰",bg:"#e8f2fb",value:f.totalRevenue,trend:"Current period",cls:"p-trend-flat"},
+    {label:"Collection Rate",icon:"📊",bg:"#e6f7f5",value:f.collectionRate,trend:cr>90?"▲ Above 90% target":"▼ Below target",cls:cr>90?"p-trend-up":"p-trend-down"},
+    {label:"AR Days",icon:"📅",bg:"#fef3c7",value:f.arDays+" days",trend:f.arDays<40?"Within range":"▼ Above 40-day target",cls:f.arDays<40?"p-trend-up":"p-trend-down"},
+    {label:"Total Visits",icon:"🏥",bg:"#ecfdf5",value:o.totalVisits.toLocaleString(),trend:o.newPatients+" new patients",cls:"p-trend-flat"},
+  ].map(k=>`<div class="p-kpi-card"><div class="p-kpi-label"><span class="p-kpi-icon" style="background:${k.bg}">${k.icon}</span>${k.label}</div><div class="p-kpi-value">${k.value}</div><div class="p-kpi-trend ${k.cls}">${k.trend}</div></div>`).join('');
+}
+
+function renderPRevChart(cid){
+  const f=portalClient.financial;
+  const maxV=Math.max(...f.rev,...f.coll,1);
+  document.getElementById(cid).innerHTML=
+    f.rev.map((v,i)=>{
+      const rh=Math.round((v/maxV)*115),ch=Math.round((f.coll[i]/maxV)*115);
+      return`<div class="p-bar-group"><div class="p-bar-wrap"><div class="p-bar" style="height:${rh}px;background:#1d6fb8;opacity:.7"></div><div class="p-bar" style="height:${ch}px;background:#00917c"></div></div><div class="p-bar-label">${f.months[i]}</div></div>`;
+    }).join('');
+}
+
+function renderPDonut(){
+  const payers=portalClient.financial.payers;
+  const total=payers.reduce((a,p)=>a+p.pct,0)||100;
+  const norm=payers.map(p=>({...p,pct:Math.round(p.pct/total*100)}));
+  const r=40,cx=50,cy=50,sw=14,circ=2*Math.PI*r;
+  let offset=0,svg='';
+  norm.forEach(p=>{const d=(p.pct/100)*circ;svg+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${p.color}" stroke-width="${sw}" stroke-dasharray="${d} ${circ}" stroke-dashoffset="-${offset}"/>`;offset+=d});
+  document.getElementById('p-donut-svg').innerHTML=svg;
+  document.getElementById('p-donut-val').textContent=portalClient.financial.totalRevenue;
+  document.getElementById('p-legend').innerHTML=norm.map(p=>`<div class="p-legend-item"><div class="p-legend-dot" style="background:${p.color}"></div><div class="p-legend-name">${p.name}</div><div class="p-legend-val">${p.pct}%</div></div>`).join('');
+}
+
+function renderPVolumeMetrics(){
+  const o=portalClient.operations;
+  document.getElementById('p-volume-metrics').innerHTML=`
+    <div class="p-metric-row"><span class="p-metric-name">Total Visits</span><span class="p-metric-value">${o.totalVisits.toLocaleString()}</span></div>
+    <div class="p-metric-row"><span class="p-metric-name">New Patients</span><span class="p-metric-value">${o.newPatients.toLocaleString()}</span></div>
+    <div class="p-metric-row"><span class="p-metric-name">Return Visits</span><span class="p-metric-value">${o.returnVisits.toLocaleString()}</span></div>
+    <div class="p-metric-row"><span class="p-metric-name">Patient Satisfaction</span><span class="p-metric-value">${o.patientSat}</span></div>`;
+}
+
+function renderPSchedMetrics(){
+  const o=portalClient.operations;
+  const nsC=parseFloat(o.noShowRate)>8?'var(--p-red)':'var(--p-green)';
+  document.getElementById('p-sched-metrics').innerHTML=`
+    <div class="p-metric-row"><span class="p-metric-name">No-Show Rate</span><span class="p-metric-value" style="color:${nsC}">${o.noShowRate}</span></div>
+    <div class="p-metric-row"><span class="p-metric-name">Cancellation Rate</span><span class="p-metric-value">${o.cancelRate}</span></div>
+    <div class="p-metric-row"><span class="p-metric-name">Capacity Utilization</span><span class="p-metric-value">${o.utilizationRate}</span></div>
+    <div class="p-metric-row"><span class="p-metric-name">Avg Wait (New Pt.)</span><span class="p-metric-value">${o.avgWaitDays} days</span></div>`;
+}
+
+function renderPARTable(id){
+  document.getElementById(id).innerHTML=`<tr><th>Age Bucket</th><th>Amount</th><th style="width:70px">Share</th></tr>`+
+    portalClient.financial.ar.map(r=>`<tr><td>${r.bucket}</td><td class="p-ar-amount">${r.amount}</td><td><div class="p-ar-mini-bar"><div class="p-ar-mini-fill" style="width:${r.pct}%;background:${r.color}"></div></div></td></tr>`).join('');
+}
+
+function renderPFinancialTab(){
+  const f=portalClient.financial;
+  const cr=parseFloat(f.collectionRate);
+  document.getElementById('p-fin-kpis').innerHTML=[
+    {label:"Gross Revenue",icon:"💵",bg:"#e8f2fb",value:f.totalRevenue,trend:"Current period",cls:"p-trend-flat"},
+    {label:"Collection Rate",icon:"✅",bg:"#ecfdf5",value:f.collectionRate,trend:cr>90?"▲ Above target":"▼ Below target",cls:cr>90?"p-trend-up":"p-trend-down"},
+    {label:"AR Days",icon:"⏱",bg:"#fef3c7",value:f.arDays+"d",trend:f.arDays<40?"Within range":"Above target",cls:f.arDays<40?"p-trend-up":"p-trend-down"},
+    {label:"Total AR",icon:"📋",bg:"#fef2f2",value:f.ar.reduce((s,r)=>s+parseInt(r.amount.replace(/[$,]/g,'')),0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}),trend:"Outstanding",cls:"p-trend-flat"},
+  ].map(k=>`<div class="p-kpi-card"><div class="p-kpi-label"><span class="p-kpi-icon" style="background:${k.bg}">${k.icon}</span>${k.label}</div><div class="p-kpi-value">${k.value}</div><div class="p-kpi-trend ${k.cls}">${k.trend}</div></div>`).join('');
+  renderPRevChart('p-fin-chart');
+  const colors=["#1d6fb8","#00917c","#7c3aed","#d97706","#9ca3af"];
+  document.getElementById('p-expenses').innerHTML=Object.entries(f.expenses).map(([n,v],i)=>`<div class="p-progress-item"><div class="p-progress-header"><span class="p-progress-label">${n}</span><span class="p-progress-val">${v}%</span></div><div class="p-progress-track"><div class="p-progress-fill" style="width:${v}%;background:${colors[i]}"></div></div></div>`).join('');
+  renderPARTable('p-ar-detail');
+}
+
+function renderPOpsTab(){
+  const o=portalClient.operations;
+  document.getElementById('p-ops-kpis').innerHTML=[
+    {label:"Total Visits",icon:"🏥",bg:"#e6f7f5",value:o.totalVisits.toLocaleString(),trend:o.newPatients+" new",cls:"p-trend-flat"},
+    {label:"No-Show Rate",icon:"📅",bg:"#fef3c7",value:o.noShowRate,trend:parseFloat(o.noShowRate)<8?"▲ Below target":"▼ Above target",cls:parseFloat(o.noShowRate)<8?"p-trend-up":"p-trend-down"},
+    {label:"Utilization",icon:"📈",bg:"#e8f2fb",value:o.utilizationRate,trend:"Capacity fill",cls:parseInt(o.utilizationRate)>85?"p-trend-up":"p-trend-flat"},
+    {label:"Patient Sat.",icon:"⭐",bg:"#ecfdf5",value:o.patientSat,trend:"Satisfaction score",cls:"p-trend-up"},
+  ].map(k=>`<div class="p-kpi-card"><div class="p-kpi-label"><span class="p-kpi-icon" style="background:${k.bg}">${k.icon}</span>${k.label}</div><div class="p-kpi-value">${k.value}</div><div class="p-kpi-trend ${k.cls}">${k.trend}</div></div>`).join('');
+
+  document.getElementById('p-productivity').innerHTML=o.providers.map(p=>`<div class="p-progress-item"><div class="p-progress-header"><span class="p-progress-label">${p.name}</span><span class="p-progress-val">${p.wrvu.toLocaleString()} wRVU</span></div><div class="p-progress-track"><div class="p-progress-fill" style="width:${Math.round(p.wrvu/p.target*100)}%;background:${p.wrvu/p.target>.9?'#059669':p.wrvu/p.target>.75?'#d97706':'#dc2626'}"></div></div></div>`).join('')+`<div style="font-size:10px;color:var(--p-text3);margin-top:6px">Bar = % of productivity target</div>`;
+
+  const maxV=Math.max(...o.visitTrend,1);
+  document.getElementById('p-visits-chart').innerHTML=o.visitTrend.map((v,i)=>{
+    const h=Math.round((v/maxV)*115);
+    return`<div class="p-bar-group"><div class="p-bar-wrap"><div class="p-bar" style="height:${h}px;background:#1d6fb8"></div></div><div class="p-bar-label">${portalClient.financial.months[i]}</div></div>`;
+  }).join('');
+
+  document.getElementById('p-noshow').innerHTML=`<div class="p-metric-row"><span class="p-metric-name">No-Show Rate</span><span class="p-metric-value">${o.noShowRate}</span></div><div class="p-metric-row"><span class="p-metric-name">Cancellation Rate</span><span class="p-metric-value">${o.cancelRate}</span></div><div class="p-metric-row"><span class="p-metric-name">Industry Benchmark</span><span class="p-metric-value" style="color:var(--p-text3)">~7.0%</span></div>`;
+  document.getElementById('p-utilization').innerHTML=`<div class="p-metric-row"><span class="p-metric-name">Capacity Utilization</span><span class="p-metric-value">${o.utilizationRate}</span></div><div class="p-metric-row"><span class="p-metric-name">Avg Wait (New Pt.)</span><span class="p-metric-value">${o.avgWaitDays} days</span></div><div class="p-metric-row"><span class="p-metric-name">Target</span><span class="p-metric-value" style="color:var(--p-text3)">≤7 days</span></div>`;
+  const retRate=o.totalVisits>0?Math.round(o.returnVisits/o.totalVisits*100):0;
+  document.getElementById('p-quality').innerHTML=`<div class="p-metric-row"><span class="p-metric-name">Patient Satisfaction</span><span class="p-metric-value">${o.patientSat}</span></div><div class="p-metric-row"><span class="p-metric-name">New Patient Volume</span><span class="p-metric-value">${o.newPatients}/mo avg</span></div><div class="p-metric-row"><span class="p-metric-name">Return Visit Rate</span><span class="p-metric-value">${retRate}%</span></div>`;
+}
+
+function renderPStaffingTab(){
+  const s=portalClient.staffing;
+  document.getElementById('p-staff-kpis').innerHTML=[
+    {label:"Total Headcount",icon:"👥",bg:"#e8f2fb",value:s.total,trend:s.providers+" providers",cls:"p-trend-flat"},
+    {label:"Turnover Rate",icon:"🔄",bg:"#fef3c7",value:s.turnoverRate,trend:parseFloat(s.turnoverRate)<15?"▲ Below 15% target":"▼ Above target",cls:parseFloat(s.turnoverRate)<15?"p-trend-up":"p-trend-down"},
+    {label:"Open Roles",icon:"📋",bg:s.openRoles>1?"#fef2f2":"#ecfdf5",value:s.openRoles,trend:s.openRoles>0?"Recruiting":"Fully staffed",cls:s.openRoles>1?"p-trend-down":s.openRoles>0?"p-trend-flat":"p-trend-up"},
+    {label:"Avg. Tenure",icon:"🏅",bg:"#ecfdf5",value:s.avgTenure,trend:"Retention indicator",cls:"p-trend-flat"},
+  ].map(k=>`<div class="p-kpi-card"><div class="p-kpi-label"><span class="p-kpi-icon" style="background:${k.bg}">${k.icon}</span>${k.label}</div><div class="p-kpi-value">${k.value}</div><div class="p-kpi-trend ${k.cls}">${k.trend}</div></div>`).join('');
+  document.getElementById('p-roster').innerHTML=s.staff.map(st=>`<div class="p-staff-card"><div class="p-staff-avatar" style="background:${st.color}">${st.initials}</div><div><div class="p-staff-name">${st.name}</div><div class="p-staff-role">${st.role}</div></div></div>`).join('');
+  document.getElementById('p-turnover').innerHTML=`<div class="p-metric-row"><span class="p-metric-name">Annual Turnover Rate</span><span class="p-metric-value">${s.turnoverRate}</span></div><div class="p-metric-row"><span class="p-metric-name">Providers</span><span class="p-metric-value">${s.providers}</span></div><div class="p-metric-row"><span class="p-metric-name">Clinical Staff</span><span class="p-metric-value">${s.clinical}</span></div><div class="p-metric-row"><span class="p-metric-name">Admin Staff</span><span class="p-metric-value">${s.admin}</span></div><div class="p-metric-row"><span class="p-metric-name">Open Positions</span><span class="p-metric-value" style="color:${s.openRoles>0?'var(--p-amber)':'var(--p-green)'}">${s.openRoles}</span></div><div class="p-metric-row"><span class="p-metric-name">Industry Benchmark</span><span class="p-metric-value" style="color:var(--p-text3)">~15–20%</span></div>`;
+}
+
+function renderPNotesTab(){
+  const p=portalClient;
+  document.getElementById('p-notes-area').innerHTML=`
+    <div class="p-notes-card">
+      <div class="p-notes-badge">● From Your Consultant · ${p.noteDate}</div>
+      <div class="p-notes-title">Practice Update</div>
+      <div class="p-notes-text">${p.notes}</div>
+      <div class="p-notes-footer"><div class="p-consultant-avatar">MD</div><div><div class="p-consultant-name">MedConsult Advisor</div><div class="p-consultant-date">${p.noteDate}</div></div></div>
+    </div>
+    <div class="p-charts-row">
+      <div class="p-chart-card"><div class="p-chart-title">Active Challenges</div><div class="p-chart-sub">Issues being addressed</div>
+        ${(p.challenges||[]).map((c,i)=>`<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--p-border)"><div style="width:18px;height:18px;border-radius:5px;background:var(--p-blue-light);color:var(--p-blue);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</div><div style="font-size:12px;color:var(--p-text2);line-height:1.5">${c}</div></div>`).join('')||'<div style="font-size:12px;color:var(--p-text3);padding:10px 0">No challenges logged.</div>'}
+      </div>
+      <div class="p-chart-card"><div class="p-chart-title">Action Items</div><div class="p-chart-sub">Next steps for your team</div>
+        ${(p.actionItems||[]).map(a=>`<div style="display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--p-border)"><div style="width:18px;height:18px;border-radius:5px;background:var(--p-teal-light);color:var(--p-teal);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;margin-top:1px">✓</div><div style="font-size:12px;color:var(--p-text2);line-height:1.5">${a}</div></div>`).join('')||'<div style="font-size:12px;color:var(--p-text3);padding:10px 0">No action items logged.</div>'}
+      </div>
+    </div>`;
+}
+
+function switchPortalTab(el,tab){
+  document.querySelectorAll('.p-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.p-tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('p-tab-'+tab).classList.add('active');
+}
+
+/* ═══════════════════════════════════════════════════
+   MODAL CLOSE ON OVERLAY CLICK
+═══════════════════════════════════════════════ */
+document.getElementById('crm-detail-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeCrmModal()});
+document.getElementById('crm-add-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAddModal()});
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+crmShowView('dashboard', document.querySelector('.crm-nav-item'));
+</script>
+
+<!-- ═══════════════════════════════════════════
+  MEETING SCHEDULER MODAL
+═══════════════════════════════════════════ -->
+<div class="crm-modal-overlay" id="mtg-modal">
+  <div class="crm-modal" style="width:680px;max-width:95vw">
+    <div class="crm-modal-header">
+      <div>
+        <div class="crm-modal-name" id="mtg-modal-title">Schedule Meeting</div>
+        <div class="crm-modal-meta" id="mtg-modal-meta">—</div>
+      </div>
+      <button class="crm-modal-close" onclick="closeMtgModal()">✕</button>
+    </div>
+    <div class="crm-modal-body" id="mtg-modal-body" style="padding:20px 24px 8px"></div>
+    <div class="crm-modal-footer" style="justify-content:flex-end">
+      <button class="btn-crm-ghost" onclick="closeMtgModal()">Cancel</button>
+      <button class="btn-crm-primary" onclick="saveMeeting()">Save Meeting</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEETING BRIEF MODAL -->
+<div class="crm-modal-overlay" id="brief-modal">
+  <div class="crm-modal" style="width:700px;max-width:95vw;max-height:90vh">
+    <div class="crm-modal-header">
+      <div>
+        <div class="crm-modal-name" id="brief-title">Meeting Brief</div>
+        <div class="crm-modal-meta" id="brief-meta">—</div>
+      </div>
+      <button class="crm-modal-close" onclick="closeBriefModal()">✕</button>
+    </div>
+    <div class="crm-modal-body" id="brief-body" style="padding:0 0 8px"></div>
+    <div class="crm-modal-footer" style="justify-content:flex-end">
+      <button class="btn-crm-ghost" onclick="printBrief()">🖨 Print Brief</button>
+      <button class="btn-crm-ghost" onclick="closeBriefModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ── MEETING STYLES ─────────────────────────────── */
+.mtg-type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.mtg-type-card{
+  border:2px solid var(--crm-border);border-radius:12px;padding:16px;
+  cursor:pointer;transition:all .2s;text-align:left;background:var(--crm-bg3);
+}
+.mtg-type-card:hover{border-color:var(--crm-accent2);background:rgba(0,149,255,.06)}
+.mtg-type-card.selected{border-color:var(--crm-accent);background:rgba(0,212,170,.07)}
+.mtg-type-icon{font-size:22px;margin-bottom:8px}
+.mtg-type-name{font-family:var(--display-crm);font-size:13px;font-weight:700;color:var(--crm-text);margin-bottom:4px}
+.mtg-type-desc{font-size:11px;color:var(--crm-text3);line-height:1.5}
+.mtg-type-tag{display:inline-block;margin-top:8px;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase}
+.mtg-ar-tag{background:rgba(0,149,255,.15);color:var(--crm-accent2)}
+.mtg-pm-tag{background:rgba(255,209,102,.15);color:var(--crm-yellow)}
+.mtg-mm-tag{background:rgba(0,212,170,.15);color:var(--crm-accent)}
+
+.mtg-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.mtg-form-row.three{grid-template-columns:1fr 1fr 1fr}
+.mtg-section{margin-bottom:16px}
+.mtg-section-label{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--crm-text3);margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--crm-border)}
+.mtg-field{background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:9px 12px}
+.mtg-field label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--crm-text3);display:block;margin-bottom:4px}
+.mtg-field input,.mtg-field select,.mtg-field textarea{background:none;border:none;outline:none;color:var(--crm-text);font-family:var(--body);font-size:13px;width:100%;resize:none}
+.mtg-field select option{background:var(--crm-bg3)}
+.mtg-field textarea{min-height:55px}
+
+.agenda-checklist{display:flex;flex-direction:column;gap:6px}
+.agenda-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;cursor:pointer;transition:all .15s}
+.agenda-item:hover{border-color:var(--crm-border2)}
+.agenda-item.checked{border-color:rgba(0,212,170,.3);background:rgba(0,212,170,.05)}
+.agenda-cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--crm-border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .15s}
+.agenda-item.checked .agenda-cb{background:var(--crm-accent);border-color:var(--crm-accent);color:#000;font-weight:700}
+.agenda-item-text{font-size:12px;color:var(--crm-text2);flex:1}
+.agenda-item-tag{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px}
+.tag-priority{background:rgba(255,71,87,.15);color:var(--crm-red)}
+.tag-review{background:rgba(0,149,255,.12);color:var(--crm-accent2)}
+.tag-action{background:rgba(0,212,170,.12);color:var(--crm-accent)}
+.tag-info{background:rgba(255,209,102,.12);color:var(--crm-yellow)}
+
+/* Meeting list cards */
+.mtg-card{
+  background:var(--crm-bg2);border:1px solid var(--crm-border);border-radius:12px;
+  padding:18px 20px;margin-bottom:12px;cursor:pointer;transition:all .18s;
+  display:flex;align-items:flex-start;gap:16px;
+}
+.mtg-card:hover{border-color:var(--crm-border2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.mtg-card-color{width:4px;border-radius:2px;align-self:stretch;flex-shrink:0}
+.mtg-card-body{flex:1}
+.mtg-card-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.mtg-card-type{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:4px}
+.mtg-card-name{font-family:var(--display-crm);font-size:14px;font-weight:700;color:var(--crm-text)}
+.mtg-card-meta{font-size:12px;color:var(--crm-text3);margin-bottom:8px;display:flex;gap:14px}
+.mtg-card-meta span{display:flex;align-items:center;gap:4px}
+.mtg-card-agenda{display:flex;flex-wrap:wrap;gap:5px}
+.mtg-card-agenda-item{font-size:10px;padding:2px 8px;border-radius:4px;background:var(--crm-bg3);color:var(--crm-text3);border:1px solid var(--crm-border)}
+.mtg-card-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.mtg-card-btn{padding:6px 12px;border-radius:7px;font-family:var(--body);font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.mtg-card-btn.primary{background:var(--crm-accent);color:#000}
+.mtg-card-btn.primary:hover{background:#00f0c0}
+.mtg-card-btn.ghost{background:var(--crm-bg3);color:var(--crm-text2);border:1px solid var(--crm-border)}
+.mtg-card-btn.ghost:hover{color:var(--crm-text)}
+
+/* countdown badge */
+.mtg-countdown{
+  font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:6px;
+  flex-shrink:0;align-self:flex-start;margin-top:2px;
+}
+.mtg-countdown.today{background:rgba(0,212,170,.15);color:var(--crm-accent)}
+.mtg-countdown.soon{background:rgba(255,209,102,.15);color:var(--crm-yellow)}
+.mtg-countdown.upcoming{background:rgba(0,149,255,.12);color:var(--crm-accent2)}
+.mtg-countdown.past{background:rgba(255,71,87,.1);color:var(--crm-red)}
+
+/* filter tabs */
+.mtg-filter-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.mtg-filter-btn{padding:6px 14px;border-radius:8px;font-family:var(--mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:1px solid var(--crm-border);background:var(--crm-bg3);color:var(--crm-text3);transition:all .15s}
+.mtg-filter-btn:hover{color:var(--crm-text2)}.mtg-filter-btn.active{background:var(--crm-accent);color:#000;border-color:var(--crm-accent)}
+
+/* Brief styles */
+.brief-header{padding:24px;background:linear-gradient(135deg,var(--crm-bg3),var(--crm-bg4));border-bottom:1px solid var(--crm-border)}
+.brief-type-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px}
+.brief-practice{font-family:var(--display-crm);font-size:18px;font-weight:800;color:var(--crm-text);margin-bottom:3px}
+.brief-when{font-size:12px;color:var(--crm-text3)}
+.brief-body{padding:20px 24px}
+.brief-section{margin-bottom:20px}
+.brief-section-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--crm-text3);margin-bottom:12px;padding-bottom:7px;border-bottom:1px solid var(--crm-border)}
+.brief-priority-item{display:flex;gap:12px;padding:10px 14px;background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;margin-bottom:7px;align-items:flex-start}
+.brief-priority-num{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--display-crm);font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px}
+.brief-priority-text{font-size:13px;color:var(--crm-text);flex:1;line-height:1.5}
+.brief-priority-tag{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;margin-top:3px;display:inline-block}
+.brief-deliverable-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--crm-border)}
+.brief-deliverable-row:last-child{border-bottom:none}
+.brief-del-name{font-size:13px;color:var(--crm-text)}
+.brief-del-due{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:5px}
+.brief-metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.brief-metric-box{background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:12px;text-align:center}
+.brief-metric-val{font-family:var(--display-crm);font-size:20px;font-weight:800;margin-bottom:3px}
+.brief-metric-lbl{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--crm-text3)}
+.brief-notes-box{background:var(--crm-bg3);border:1px solid var(--crm-border);border-radius:8px;padding:14px;font-size:13px;color:var(--crm-text2);line-height:1.7}
+.brief-agenda-list{list-style:none;counter-reset:agenda}
+.brief-agenda-list li{counter-increment:agenda;display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--crm-border);font-size:13px;color:var(--crm-text2)}
+.brief-agenda-list li:last-child{border-bottom:none}
+.brief-agenda-list li::before{content:counter(agenda);width:20px;height:20px;border-radius:5px;background:var(--crm-bg4);color:var(--crm-text3);font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* calendar strip */
+.cal-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:20px}
+.cal-day{flex-shrink:0;width:52px;text-align:center;padding:8px 4px;border-radius:10px;border:1px solid var(--crm-border);cursor:pointer;transition:all .15s}
+.cal-day:hover{border-color:var(--crm-border2)}
+.cal-day.has-mtg{border-color:rgba(0,212,170,.3);background:rgba(0,212,170,.05)}
+.cal-day.today-marker{border-color:var(--crm-accent2)}
+.cal-day-name{font-family:var(--mono);font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--crm-text3);margin-bottom:3px}
+.cal-day-num{font-family:var(--display-crm);font-size:16px;font-weight:700;color:var(--crm-text);margin-bottom:3px}
+.cal-day-dot{width:5px;height:5px;border-radius:50%;margin:0 auto;background:transparent}
+.cal-day.has-mtg .cal-day-dot{background:var(--crm-accent)}
+
+@media print{
+  .crm-shell,.portal-screen{display:none!important}
+  .crm-modal-overlay,.brief-modal,.mtg-modal{display:block!important;position:static!important;background:none!important}
+  #brief-modal .crm-modal{box-shadow:none;border:none;max-height:none}
+  .crm-modal-footer,.crm-modal-close{display:none!important}
+}
+</style>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   MEETING DATA & TYPES
+═══════════════════════════════════════════════ */
+const MTG_TYPES = {
+  ar: {
+    id:'ar', name:'AR Review Meeting', short:'AR Review',
+    icon:'💰', color:'#0095ff', tag:'mtg-ar-tag', colorVar:'var(--crm-accent2)',
+    desc:'Accounts receivable deep-dive. Aging buckets, denial trends, payer issues, collection rate review.',
+    defaultAgenda:[
+      {id:'ar1', text:'Review AR aging summary — 0-30, 31-60, 61-90, 90+ buckets', tag:'review'},
+      {id:'ar2', text:'Collection rate vs. target (90% benchmark)', tag:'review'},
+      {id:'ar3', text:'Top denial reasons & appeal status', tag:'priority'},
+      {id:'ar4', text:'Payer mix analysis & contract issues', tag:'review'},
+      {id:'ar5', text:'Outstanding claims >60 days — action plan', tag:'action'},
+      {id:'ar6', text:'Coding accuracy & documentation gaps', tag:'info'},
+      {id:'ar7', text:'Staff productivity — billing team update', tag:'info'},
+      {id:'ar8', text:'Next steps & deadlines', tag:'action'},
+    ],
+    priorityEngine: (client) => {
+      const items = [];
+      if(client.status==='at-risk') items.push({text:`URGENT: ${client.name} revenue at risk — immediate payer escalation needed`,tag:'priority',color:'#ff4757'});
+      if(client.challenges.some(c=>c.toLowerCase().includes('billing')||c.toLowerCase().includes('payer')||c.toLowerCase().includes('ar')))
+        items.push({text:'Active billing/payer challenge flagged — prepare dispute documentation',tag:'priority',color:'#ff4757'});
+      const overdueDels = client.deliverables.filter(d=>!d.done && new Date(d.due)<new Date());
+      if(overdueDels.length) items.push({text:`${overdueDels.length} overdue deliverable(s) — address before meeting`,tag:'action',color:'#ffd166'});
+      items.push({text:'Pull AR aging report from billing system prior to meeting',tag:'review',color:'#0095ff'});
+      items.push({text:'Verify collection rate trend over last 3 months',tag:'review',color:'#0095ff'});
+      return items;
+    },
+    metrics: (client) => [
+      {label:'AR Days Target',val:'<40d',color:'var(--crm-accent)'},
+      {label:'Collection Rate',val:'≥90%',color:'var(--crm-green)'},
+      {label:'Denial Rate',val:'<5%',color:'var(--crm-yellow)'},
+    ]
+  },
+  pm: {
+    id:'pm', name:'Practice Manager Meeting', short:'Practice Mgr',
+    icon:'🏥', color:'#ffd166', tag:'mtg-pm-tag', colorVar:'var(--crm-yellow)',
+    desc:'Operational deep-dive with the practice manager. Staffing, workflows, scheduling, and day-to-day issues.',
+    defaultAgenda:[
+      {id:'pm1', text:'Scheduling efficiency & capacity utilization review', tag:'review'},
+      {id:'pm2', text:'No-show & cancellation rates — reduction strategies', tag:'priority'},
+      {id:'pm3', text:'Staff updates — open roles, turnover, morale', tag:'info'},
+      {id:'pm4', text:'Patient satisfaction trends & complaint log', tag:'review'},
+      {id:'pm5', text:'Workflow bottlenecks & operational issues', tag:'priority'},
+      {id:'pm6', text:'Technology & EHR issues', tag:'info'},
+      {id:'pm7', text:'Upcoming changes — new hires, policy updates', tag:'info'},
+      {id:'pm8', text:'Action items & accountability review from last meeting', tag:'action'},
+    ],
+    priorityEngine: (client) => {
+      const items = [];
+      if(client.challenges.some(c=>c.toLowerCase().includes('staff')||c.toLowerCase().includes('turnover')||c.toLowerCase().includes('hiring')))
+        items.push({text:'Staffing challenge active — review open roles and retention plan',tag:'priority',color:'#ff4757'});
+      if(client.challenges.some(c=>c.toLowerCase().includes('ehr')||c.toLowerCase().includes('technology')||c.toLowerCase().includes('portal')))
+        items.push({text:'Technology implementation in progress — get status update from manager',tag:'action',color:'#ffd166'});
+      if(client.status==='pending') items.push({text:'Practice flagged as "needs attention" — investigate root operational cause',tag:'priority',color:'#ff4757'});
+      items.push({text:'Review scheduling template utilization — identify open slots pattern',tag:'review',color:'#0095ff'});
+      items.push({text:'Confirm staff meeting schedule and training calendar for the month',tag:'info',color:'var(--crm-text3)'});
+      return items;
+    },
+    metrics: (client) => [
+      {label:'No-Show Target',val:'<7%',color:'var(--crm-green)'},
+      {label:'Utilization',val:'>85%',color:'var(--crm-accent)'},
+      {label:'Wait Time',val:'≤7 days',color:'var(--crm-yellow)'},
+    ]
+  },
+  mm: {
+    id:'mm', name:'Owner / Monthly Mgmt Meeting', short:'Monthly Mgmt',
+    icon:'📋', color:'#00d4aa', tag:'mtg-mm-tag', colorVar:'var(--crm-accent)',
+    desc:'Strategic monthly review with the owner/physician. Financial performance, growth, strategy, and key decisions.',
+    defaultAgenda:[
+      {id:'mm1', text:'Monthly financial performance summary (revenue, collections, expenses)', tag:'review'},
+      {id:'mm2', text:'Key operational KPIs vs. benchmarks', tag:'review'},
+      {id:'mm3', text:'Strategic priorities update — progress on major initiatives', tag:'priority'},
+      {id:'mm4', text:'Staff & provider update — hiring, performance, morale', tag:'info'},
+      {id:'mm5', text:'Growth opportunities — new services, locations, referral sources', tag:'action'},
+      {id:'mm6', text:'Risk items — payer issues, compliance, litigation', tag:'priority'},
+      {id:'mm7', text:'Consultant deliverables review & next month priorities', tag:'action'},
+      {id:'mm8', text:'Owner questions, concerns, and decisions needed', tag:'priority'},
+    ],
+    priorityEngine: (client) => {
+      const items = [];
+      if(client.status==='at-risk') items.push({text:`CRITICAL: Practice at risk — prepare direct conversation with owner on root causes`,tag:'priority',color:'#ff4757'});
+      const openDels = client.deliverables.filter(d=>!d.done);
+      if(openDels.length) items.push({text:`${openDels.length} open deliverable(s) to review — present status and revised timelines`,tag:'action',color:'#ffd166'});
+      if(client.challenges.length) items.push({text:`Top challenge: "${client.challenges[0]}" — bring data-driven recommendation`,tag:'priority',color:'#ff4757'});
+      items.push({text:'Prepare 1-page financial summary with trend vs. prior 3 months',tag:'review',color:'#0095ff'});
+      items.push({text:'Identify one strategic win to celebrate and one gap to close this month',tag:'action',color:'var(--crm-accent)'});
+      return items;
+    },
+    metrics: (client) => [
+      {label:'Practices',val:client.providers+'+ MD',color:'var(--crm-accent)'},
+      {label:'Open Items',val:client.deliverables.filter(d=>!d.done).length,color:'var(--crm-yellow)'},
+      {label:'Challenges',val:client.challenges.length,color:'var(--crm-red)'},
+    ]
+  }
+};
+
+// Meeting storage
+let meetings = [
+  {id:1, clientId:1, type:'ar', date:'2026-03-05', time:'10:00', location:'Zoom', attendees:'Billing Manager, Dr. Chen', notes:'Prepare Q4 AR aging report. Focus on 90+ bucket.', agenda:['ar1','ar2','ar3','ar5','ar8'], completed:false},
+  {id:2, clientId:2, type:'mm', date:'2026-02-27', time:'14:00', location:'On-site', attendees:'Dr. Marcus Webb', notes:'Payer dispute is top priority. Come with appeal strategy.', agenda:['mm1','mm3','mm6','mm7','mm8'], completed:false},
+  {id:3, clientId:4, type:'pm', date:'2026-03-03', time:'09:00', location:'Zoom', attendees:'Practice Manager', notes:'AI adoption resistance — prepare change management talking points.', agenda:['pm1','pm5','pm7','pm8'], completed:false},
+  {id:4, clientId:3, type:'mm', date:'2026-03-12', time:'11:00', location:'Zoom', attendees:'Dr. Rita Patel', notes:'Expansion feasibility — bring draft model.', agenda:['mm1','mm3','mm5','mm7'], completed:false},
+  {id:5, clientId:6, type:'ar', date:'2026-03-04', time:'13:00', location:'Phone', attendees:'Billing Team', notes:'Volume decline affecting collections — review payer mix.', agenda:['ar1','ar2','ar4','ar5'], completed:false},
+];
+let nextMtgId = 6;
+let activeMtgClientId = null;
+let activeMtgType = null;
+let editingMtgId = null;
+let mtgFilter = 'all';
+
+/* ═══════════════════════════════════════════════════
+   MEETINGS VIEW
+═══════════════════════════════════════════════ */
+function renderMeetingsView(container) {
+  document.getElementById('crm-view-title').textContent = 'Meeting Planner';
+  document.getElementById('crm-view-date').textContent = 'Scheduled meetings · priorities · briefs';
+
+  const today = new Date();
+  const upcoming = meetings.filter(m => !m.completed && new Date(m.date) >= today).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const past = meetings.filter(m => m.completed || new Date(m.date) < today).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  // Update badge
+  document.getElementById('mtg-badge').textContent = upcoming.length;
+
+  // Build 14-day calendar strip
+  const calDays = [];
+  for(let i=0;i<14;i++){
+    const d = new Date(today);
+    d.setDate(today.getDate()+i);
+    const ds = d.toISOString().split('T')[0];
+    const hasMtg = meetings.some(m=>m.date===ds&&!m.completed);
+    calDays.push({date:d, str:ds, hasMtg, isToday:i===0});
+  }
+
+  const filtered = mtgFilter==='all' ? [...upcoming,...past] :
+    mtgFilter==='upcoming' ? upcoming :
+    mtgFilter==='past' ? past :
+    meetings.filter(m=>m.type===mtgFilter).sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  container.innerHTML = `
+    <!-- STATS ROW -->
+    <div class="crm-stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+      <div class="crm-stat-card blue"><div class="crm-stat-label">Upcoming</div><div class="crm-stat-value" style="color:var(--crm-accent2)">${upcoming.length}</div><div class="crm-stat-sub">Scheduled meetings</div></div>
+      <div class="crm-stat-card yellow"><div class="crm-stat-label">This Week</div><div class="crm-stat-value" style="color:var(--crm-yellow)">${meetings.filter(m=>{const d=new Date(m.date);const diff=Math.ceil((d-today)/86400000);return diff>=0&&diff<=7}).length}</div><div class="crm-stat-sub">Next 7 days</div></div>
+      <div class="crm-stat-card green"><div class="crm-stat-label">AR Reviews</div><div class="crm-stat-value" style="color:var(--crm-accent)">${upcoming.filter(m=>m.type==='ar').length}</div><div class="crm-stat-sub">Scheduled</div></div>
+      <div class="crm-stat-card blue"><div class="crm-stat-label">Mgmt Meetings</div><div class="crm-stat-value" style="color:var(--crm-accent2)">${upcoming.filter(m=>m.type==='mm').length}</div><div class="crm-stat-sub">Owner meetings</div></div>
+    </div>
+
+    <!-- CALENDAR STRIP -->
+    <div class="crm-panel" style="margin-bottom:20px">
+      <div class="crm-panel-header"><div class="crm-panel-title">📅 Next 14 Days</div></div>
+      <div style="padding:16px 20px">
+        <div class="cal-strip">
+          ${calDays.map(d=>`
+            <div class="cal-day ${d.hasMtg?'has-mtg':''} ${d.isToday?'today-marker':''}" title="${d.str}">
+              <div class="cal-day-name">${d.date.toLocaleDateString('en-US',{weekday:'short'})}</div>
+              <div class="cal-day-num" style="${d.isToday?'color:var(--crm-accent2)':''}">${d.date.getDate()}</div>
+              <div class="cal-day-dot"></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- FILTER + SCHEDULE BUTTON -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <div class="mtg-filter-row" style="margin-bottom:0;flex:1">
+        ${[['all','All'],['upcoming','Upcoming'],['ar','AR Review'],['pm','Practice Mgr'],['mm','Monthly Mgmt'],['past','Past']].map(([v,l])=>
+          `<button class="mtg-filter-btn ${mtgFilter===v?'active':''}" onclick="setMtgFilter('${v}')">${l}</button>`
+        ).join('')}
+      </div>
+      <button class="btn-crm-primary" onclick="openMtgModal(null,'ar')">+ Schedule Meeting</button>
+    </div>
+
+    <!-- MEETING LIST -->
+    <div id="mtg-list">
+      ${filtered.length ? filtered.map(m => renderMtgCard(m)).join('') :
+        `<div style="text-align:center;padding:48px;color:var(--crm-text3);font-size:14px">No meetings found. <span style="color:var(--crm-accent);cursor:pointer" onclick="openMtgModal(null,'ar')">Schedule one →</span></div>`}
+    </div>`;
+}
+
+function renderMtgCard(mtg) {
+  const client = clients.find(c=>c.id===mtg.clientId);
+  if(!client) return '';
+  const type = MTG_TYPES[mtg.type];
+  const d = new Date(mtg.date);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.ceil((d-today)/86400000);
+  let countdownCls, countdownTxt;
+  if(diff<0){countdownCls='past';countdownTxt=`${Math.abs(diff)}d ago`}
+  else if(diff===0){countdownCls='today';countdownTxt='Today'}
+  else if(diff<=3){countdownCls='soon';countdownTxt=`In ${diff}d`}
+  else{countdownCls='upcoming';countdownTxt=d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+
+  const agendaItems = (mtg.agenda||[]).slice(0,4).map(aid=>{
+    const found = type.defaultAgenda.find(a=>a.id===aid);
+    return found ? `<span class="mtg-card-agenda-item">${found.text.substring(0,40)}${found.text.length>40?'…':''}</span>` : '';
+  }).join('');
+
+  return `<div class="mtg-card" onclick="openBrief(${mtg.id})">
+    <div class="mtg-card-color" style="background:${type.color}"></div>
+    <div class="mtg-card-body">
+      <div class="mtg-card-header">
+        <span class="mtg-card-type ${type.tag}">${type.short}</span>
+        <span class="mtg-card-name">${client.name}</span>
+        ${mtg.fromExcel ? `<span style="font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(29,111,184,.12);color:var(--crm-accent2);margin-left:auto">📊 Excel</span>` : ''}
+      </div>
+      <div class="mtg-card-meta">
+        <span>🕐 ${mtg.time}</span>
+        <span>📍 ${mtg.location||'TBD'}</span>
+        <span>👤 ${(mtg.attendees||'').split(',')[0]}</span>
+      </div>
+      <div class="mtg-card-agenda">${agendaItems}</div>
+    </div>
+    <div class="mtg-card-actions">
+      <span class="mtg-countdown ${countdownCls}">${countdownTxt}</span>
+      <button class="mtg-card-btn primary" onclick="event.stopPropagation();openBrief(${mtg.id})">📋 Brief</button>
+      <button class="mtg-card-btn ghost" onclick="event.stopPropagation();editMeeting(${mtg.id})">✏ Edit</button>
+    </div>
+  </div>`;
+}
+
+function setMtgFilter(f){
+  mtgFilter=f;
+  renderMeetingsView(document.getElementById('crm-content'));
+}
+
+/* ═══════════════════════════════════════════════════
+   SCHEDULE MEETING MODAL
+═══════════════════════════════════════════════ */
+function openMtgModal(clientId, defaultType) {
+  activeMtgClientId = clientId;
+  activeMtgType = defaultType || 'ar';
+  editingMtgId = null;
+  document.getElementById('mtg-modal-title').textContent = 'Schedule Meeting';
+  document.getElementById('mtg-modal-meta').textContent = clientId ? clients.find(c=>c.id===clientId)?.name : 'Select a practice and meeting type';
+  renderMtgModalBody();
+  document.getElementById('mtg-modal').classList.add('open');
+}
+
+function editMeeting(mtgId) {
+  const mtg = meetings.find(m=>m.id===mtgId);
+  if(!mtg) return;
+  editingMtgId = mtgId;
+  activeMtgClientId = mtg.clientId;
+  activeMtgType = mtg.type;
+  document.getElementById('mtg-modal-title').textContent = 'Edit Meeting';
+  document.getElementById('mtg-modal-meta').textContent = clients.find(c=>c.id===mtg.clientId)?.name||'';
+  renderMtgModalBody(mtg);
+  document.getElementById('mtg-modal').classList.add('open');
+}
+
+function renderMtgModalBody(existing) {
+  const body = document.getElementById('mtg-modal-body');
+  const selectedType = activeMtgType;
+  const checkedAgenda = existing ? existing.agenda : MTG_TYPES[selectedType].defaultAgenda.map(a=>a.id);
+
+  body.innerHTML = `
+    <!-- MEETING TYPE SELECTOR -->
+    <div class="mtg-section">
+      <div class="mtg-section-label">Meeting Type</div>
+      <div class="mtg-type-grid">
+        ${Object.values(MTG_TYPES).map(t=>`
+          <div class="mtg-type-card ${selectedType===t.id?'selected':''}" onclick="selectMtgType('${t.id}')">
+            <div class="mtg-type-icon">${t.icon}</div>
+            <div class="mtg-type-name">${t.name}</div>
+            <div class="mtg-type-desc">${t.desc}</div>
+            <span class="mtg-type-tag ${t.tag}">${t.short}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- DETAILS -->
+    <div class="mtg-section">
+      <div class="mtg-section-label">Meeting Details</div>
+      <div class="mtg-form-row">
+        <div class="mtg-field">
+          <label>Practice</label>
+          <select id="mtg-client-sel" onchange="activeMtgClientId=parseInt(this.value)">
+            <option value="">— Select Practice —</option>
+            ${clients.map(c=>`<option value="${c.id}" ${activeMtgClientId===c.id?'selected':''}>${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="mtg-field">
+          <label>Attendees</label>
+          <input id="mtg-attendees" value="${existing?.attendees||MTG_TYPES[selectedType].id==='ar'?'Billing Manager':'Practice Manager'}" placeholder="Who will be present">
+        </div>
+      </div>
+      <div class="mtg-form-row three">
+        <div class="mtg-field"><label>Date</label><input type="date" id="mtg-date" value="${existing?.date||new Date(Date.now()+7*86400000).toISOString().split('T')[0]}"></div>
+        <div class="mtg-field"><label>Time</label><input type="time" id="mtg-time" value="${existing?.time||'10:00'}"></div>
+        <div class="mtg-field"><label>Location</label><input id="mtg-location" value="${existing?.location||'Zoom'}" placeholder="Zoom / On-site / Phone"></div>
+      </div>
+    </div>
+
+    <!-- AGENDA CHECKLIST -->
+    <div class="mtg-section">
+      <div class="mtg-section-label">Agenda Items <span style="color:var(--crm-text3);font-size:9px;font-weight:400;margin-left:8px">— check items to include</span></div>
+      <div class="agenda-checklist" id="agenda-checklist">
+        ${MTG_TYPES[selectedType].defaultAgenda.map(item=>`
+          <div class="agenda-item ${checkedAgenda.includes(item.id)?'checked':''}" onclick="toggleAgendaItem('${item.id}',this)" id="ai-${item.id}">
+            <div class="agenda-cb">${checkedAgenda.includes(item.id)?'✓':''}</div>
+            <div class="agenda-item-text">${item.text}</div>
+            <span class="agenda-item-tag tag-${item.tag}">${item.tag}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="mtg-section">
+      <div class="mtg-section-label">Pre-Meeting Notes</div>
+      <div class="mtg-field"><textarea id="mtg-notes" placeholder="Key context, prep items, or talking points to remember…">${existing?.notes||''}</textarea></div>
+    </div>`;
+}
+
+function selectMtgType(typeId) {
+  activeMtgType = typeId;
+  const existing = editingMtgId ? meetings.find(m=>m.id===editingMtgId) : null;
+  renderMtgModalBody(existing ? {...existing, type:typeId, agenda: MTG_TYPES[typeId].defaultAgenda.map(a=>a.id)} : null);
+}
+
+function toggleAgendaItem(id, el) {
+  el.classList.toggle('checked');
+  const cb = el.querySelector('.agenda-cb');
+  cb.textContent = el.classList.contains('checked') ? '✓' : '';
+}
+
+function saveMeeting() {
+  const clientId = parseInt(document.getElementById('mtg-client-sel').value);
+  const date = document.getElementById('mtg-date').value;
+  if(!clientId){alert('Please select a practice.');return}
+  if(!date){alert('Please select a date.');return}
+
+  const checkedIds = [...document.querySelectorAll('.agenda-item.checked')].map(el=>el.id.replace('ai-',''));
+
+  const mtgData = {
+    clientId, type:activeMtgType, date,
+    time: document.getElementById('mtg-time').value,
+    location: document.getElementById('mtg-location').value,
+    attendees: document.getElementById('mtg-attendees').value,
+    notes: document.getElementById('mtg-notes').value,
+    agenda: checkedIds, completed:false
+  };
+
+  if(editingMtgId) {
+    const idx = meetings.findIndex(m=>m.id===editingMtgId);
+    meetings[idx] = {...meetings[idx],...mtgData};
+  } else {
+    meetings.push({id:nextMtgId++,...mtgData});
+  }
+
+  closeMtgModal();
+  showToast(editingMtgId ? '✓ Meeting updated' : '✓ Meeting scheduled');
+  renderMeetingsView(document.getElementById('crm-content'));
+}
+
+function closeMtgModal() { document.getElementById('mtg-modal').classList.remove('open') }
+
+/* ═══════════════════════════════════════════════════
+   MEETING BRIEF GENERATOR
+═══════════════════════════════════════════════ */
+function openBrief(mtgId) {
+  const mtg = meetings.find(m=>m.id===mtgId);
+  if(!mtg) return;
+  const client = clients.find(c=>c.id===mtg.clientId);
+  const type = MTG_TYPES[mtg.type];
+  const d = new Date(mtg.date);
+  const dateStr = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  document.getElementById('brief-title').textContent = `${type.name}`;
+  document.getElementById('brief-meta').textContent = `${client.name} · ${dateStr} at ${mtg.time}`;
+
+  const priorities = type.priorityEngine(client);
+  const agendaItems = (mtg.agenda||[]).map(aid=>type.defaultAgenda.find(a=>a.id===aid)).filter(Boolean);
+  const openDels = client.deliverables.filter(d=>!d.done);
+  const metrics = type.metrics(client);
+
+  document.getElementById('brief-body').innerHTML = `
+    <!-- HEADER BAND -->
+    <div class="brief-header">
+      <div class="brief-type-badge" style="background:${type.color}22;color:${type.color};border:1px solid ${type.color}33">
+        ${type.icon} ${type.short}
+      </div>
+      <div class="brief-practice">${client.name}</div>
+      <div class="brief-when">📅 ${dateStr} &nbsp;·&nbsp; 🕐 ${mtg.time} &nbsp;·&nbsp; 📍 ${mtg.location||'TBD'} &nbsp;·&nbsp; 👤 ${mtg.attendees||'—'}</div>
+    </div>
+
+    <div class="brief-body">
+      <!-- KEY METRICS -->
+      <div class="brief-section">
+        <div class="brief-section-title">Benchmarks For This Meeting</div>
+        <div class="brief-metric-grid">
+          ${metrics.map(m=>`<div class="brief-metric-box"><div class="brief-metric-val" style="color:${m.color}">${m.val}</div><div class="brief-metric-lbl">${m.label}</div></div>`).join('')}
+          <div class="brief-metric-box"><div class="brief-metric-val" style="color:${client.status==='active'?'var(--crm-green)':client.status==='at-risk'?'var(--crm-red)':'var(--crm-yellow)'}">${client.status==='active'?'Healthy':client.status==='at-risk'?'At Risk':'Attention'}</div><div class="brief-metric-lbl">Practice Health</div></div>
+          <div class="brief-metric-box"><div class="brief-metric-val" style="color:var(--crm-yellow)">${openDels.length}</div><div class="brief-metric-lbl">Open Deliverables</div></div>
+          <div class="brief-metric-box"><div class="brief-metric-val" style="color:var(--crm-accent2)">${client.providers}</div><div class="brief-metric-lbl">Providers</div></div>
+        </div>
+      </div>
+
+      <!-- PRIORITIES -->
+      <div class="brief-section">
+        <div class="brief-section-title">⚡ Pre-Meeting Priorities</div>
+        ${priorities.map((p,i)=>`
+          <div class="brief-priority-item">
+            <div class="brief-priority-num" style="background:${p.color}22;color:${p.color}">${i+1}</div>
+            <div>
+              <div class="brief-priority-text">${p.text}</div>
+              <span class="brief-priority-tag tag-${p.tag}" style="background:${p.color}18;color:${p.color}">${p.tag}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+
+      <!-- AGENDA -->
+      <div class="brief-section">
+        <div class="brief-section-title">📋 Meeting Agenda</div>
+        <ul class="brief-agenda-list">
+          ${(()=>{
+            // Excel free-text items take priority if present
+            if(mtg.agendaFreeText && mtg.agendaFreeText.length){
+              return mtg.agendaFreeText.map(txt=>`<li>${txt}</li>`).join('');
+            }
+            // Otherwise use checked agenda IDs
+            return agendaItems.map(item=>`<li>${item.text} <span class="agenda-item-tag tag-${item.tag}" style="margin-left:8px">${item.tag}</span></li>`).join('');
+          })()}
+        </ul>
+      </div>
+
+      <!-- OPEN DELIVERABLES -->
+      ${openDels.length ? `<div class="brief-section">
+        <div class="brief-section-title">◻ Open Deliverables</div>
+        ${openDels.map(d=>`<div class="brief-deliverable-row"><span class="brief-del-name">${d.name}</span><span class="brief-del-due ${getDueCls(d.due)}" style="background:${getDueCls(d.due)==='overdue'?'rgba(255,71,87,.12)':getDueCls(d.due)==='soon'?'rgba(255,209,102,.12)':'rgba(46,213,115,.1)'};color:${getDueCls(d.due)==='overdue'?'var(--crm-red)':getDueCls(d.due)==='soon'?'var(--crm-yellow)':'var(--crm-green)'}">${getDueLbl(d.due)}</span></div>`).join('')}
+      </div>` : ''}
+
+      <!-- ACTIVE CHALLENGES -->
+      <div class="brief-section">
+        <div class="brief-section-title">◈ Active Challenges</div>
+        ${client.challenges.map((ch,i)=>`<div class="brief-priority-item"><div class="brief-priority-num" style="background:rgba(0,149,255,.15);color:var(--crm-accent2)">${i+1}</div><div class="brief-priority-text">${ch}</div></div>`).join('')}
+      </div>
+
+      <!-- CONSULTANT NOTES -->
+      ${mtg.notes ? `<div class="brief-section">
+        <div class="brief-section-title">📝 Pre-Meeting Notes</div>
+        <div class="brief-notes-box">${mtg.notes}</div>
+      </div>` : ''}
+
+      <!-- CLIENT CONTEXT -->
+      <div class="brief-section">
+        <div class="brief-section-title">📄 Client Context</div>
+        <div class="brief-notes-box">${client.notes}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('brief-modal').classList.add('open');
+}
+
+function closeBriefModal() { document.getElementById('brief-modal').classList.remove('open') }
+
+function printBrief() {
+  window.print();
+}
+
+/* Close on overlay click */
+document.getElementById('mtg-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeMtgModal()});
+document.getElementById('brief-modal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeBriefModal()});
+
+/* Hook meetings into crmShowView */
+const _origCrmShowView = crmShowView;
+crmShowView = function(view, el) {
+  if(view==='meetings') {
+    document.querySelectorAll('.crm-nav-item').forEach(n=>n.classList.remove('active'));
+    if(el) el.classList.add('active');
+    renderMeetingsView(document.getElementById('crm-content'));
+  } else {
+    _origCrmShowView(view, el);
+  }
+};
+
+/* Also wire "Schedule Meeting" button from client modal */
+function scheduleMeetingForClient(clientId, typeId) {
+  closeCrmModal();
+  openMtgModal(clientId, typeId||'mm');
+}
+
+/* ═══════════════════════════════════════════════════
+   AUTHENTICATION SYSTEM
+═══════════════════════════════════════════════ */
+
+// Session type: 'client' | 'consultant' | null
+let sessionType = null;
+let sessionClientId = null;
+
+// ── Hardcoded credentials (swap to Excel later) ──────────────────
+// Format: { email (lowercase), code, practiceId }
+// Access codes are case-insensitive
+const CLIENT_CREDENTIALS = [
+  { email: 'sarah.chen@lakewood.com',       code: 'LAKE2026',  practiceId: 1  },
+  { email: 's.chen@lakewood.com',           code: 'LAKE2026',  practiceId: 1  },
+  { email: 'marcus.webb@westside.com',      code: 'WEST2026',  practiceId: 2  },
+  { email: 'm.webb@westside.com',           code: 'WEST2026',  practiceId: 2  },
+  { email: 'rita.patel@harbor.com',         code: 'HARB2026',  practiceId: 3  },
+  { email: 'r.patel@harbor.com',            code: 'HARB2026',  practiceId: 3  },
+  { email: 'james.okafor@suncoast.com',     code: 'SUNC2026',  practiceId: 4  },
+  { email: 'j.okafor@suncoast.com',         code: 'SUNC2026',  practiceId: 4  },
+  { email: 'priya.sharma@northdale.com',    code: 'NORT2026',  practiceId: 5  },
+  { email: 'p.sharma@northdale.com',        code: 'NORT2026',  practiceId: 5  },
+  { email: 'kevin.liu@palmridge.com',       code: 'PALM2026',  practiceId: 6  },
+  { email: 'k.liu@palmridge.com',           code: 'PALM2026',  practiceId: 6  },
+  { email: 'amanda.torres@bayshore.com',    code: 'BAYS2026',  practiceId: 7  },
+  { email: 'a.torres@bayshore.com',         code: 'BAYS2026',  practiceId: 7  },
+  { email: 'thomas.grant@cfpeds.com',       code: 'CFPE2026',  practiceId: 8  },
+  { email: 't.grant@cfpeds.com',            code: 'CFPE2026',  practiceId: 8  },
+  { email: 'leon.brooks@riverside.com',     code: 'RIVE2026',  practiceId: 9  },
+  { email: 'l.brooks@riverside.com',        code: 'RIVE2026',  practiceId: 9  },
+  { email: 'nina.shah@gulfcoast.com',       code: 'GULF2026',  practiceId: 10 },
+  { email: 'n.shah@gulfcoast.com',          code: 'GULF2026',  practiceId: 10 },
+  // Demo / test login — works for any practice (practiceId 1)
+  { email: 'demo@medconsult.com',           code: 'DEMO2026',  practiceId: 1  },
+];
+
+// Consultant PIN (change this to something secure in production)
+const CONSULTANT_PIN = '123456';
+
+// ── Populate next meeting strip on login screen ───────────────────
+function populateLoginNextMeeting() {
+  const upcoming = meetings
+    .filter(m => m.status !== 'cancelled' && new Date(m.date) >= new Date(today.toDateString()))
+    .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+  const strip = document.getElementById('login-next-mtg');
+  if (!upcoming.length) { strip.style.display = 'none'; return; }
+
+  const m = upcoming[0];
+  const c = clients.find(x => x.id === m.clientId);
+  const type = MTG_TYPES[m.type];
+  const d = new Date(m.date);
+  const dateStr = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+
+  document.getElementById('login-mtg-name').textContent =
+    `${type ? type.short : m.type.toUpperCase()} – ${c ? c.name : 'Practice'}`;
+  document.getElementById('login-mtg-date').textContent = `${dateStr} at ${m.time}`;
+  strip.style.display = 'flex';
+}
+
+// ── Client login flow ─────────────────────────────────────────────
+function attemptClientLogin() {
+  const email = (document.getElementById('login-email').value || '').trim().toLowerCase();
+  const code  = (document.getElementById('login-code').value  || '').trim().toUpperCase();
+  const errEl = document.getElementById('login-error');
+  const errMsg = document.getElementById('login-error-msg');
+
+  // Clear errors
+  errEl.classList.remove('show');
+  document.getElementById('login-email').classList.remove('error');
+  document.getElementById('login-code').classList.remove('error');
+
+  if (!email) {
+    errMsg.textContent = 'Please enter your email address.';
+    errEl.classList.add('show');
+    document.getElementById('login-email').classList.add('error');
+    return;
+  }
+  if (!code) {
+    errMsg.textContent = 'Please enter your access code.';
+    errEl.classList.add('show');
+    document.getElementById('login-code').classList.add('error');
+    return;
+  }
+
+  const match = CLIENT_CREDENTIALS.find(c =>
+    c.email === email && c.code === code
+  );
+
+  if (!match) {
+    errMsg.textContent = 'Invalid email or access code. Please check your credentials and try again.';
+    errEl.classList.add('show');
+    document.getElementById('login-email').classList.add('error');
+    document.getElementById('login-code').classList.add('error');
+    return;
+  }
+
+  // Auth success — launch client portal
+  sessionType = 'client';
+  sessionClientId = match.practiceId;
+
+  // Hide Back to CRM button for client sessions — show Sign Out instead
+  const backBtn = document.getElementById('btn-back-crm');
+  if (backBtn) { backBtn.style.display = ''; backBtn.textContent = '← Sign Out'; }
+
+  // Transition into portal
+  const ov = document.getElementById('transition-overlay');
+  const c2 = clients.find(x => x.id === match.practiceId);
+  document.getElementById('transition-label').textContent = c2 ? `Welcome, ${c2.name}` : 'Loading your portal';
+  ov.classList.add('show');
+
+  setTimeout(() => {
+    portalClient = buildPortalData(c2);
+
+    document.getElementById('login-screen').classList.remove('active');
+    document.getElementById('portal-screen').classList.add('active');
+
+    document.querySelectorAll('.p-tab').forEach((t,i) => t.classList.toggle('active', i===0));
+    document.querySelectorAll('.p-tab-panel').forEach((p,i) => p.classList.toggle('active', i===0));
+
+    renderPortal();
+    ov.classList.remove('show');
+  }, 500);
+}
+
+// Allow Enter key on login form
+document.addEventListener('DOMContentLoaded', () => {
+  ['login-email','login-code'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if(e.key==='Enter') attemptClientLogin(); });
+  });
+  populateLoginNextMeeting();
+});
+
+// ── Consultant PIN flow ───────────────────────────────────────────
+function openConsultantPin() {
+  document.getElementById('consultant-pin-overlay').classList.add('open');
+  document.getElementById('consultant-pin-input').value = '';
+  document.getElementById('consultant-pin-input').classList.remove('error');
+  document.getElementById('consultant-pin-hint').textContent = 'Default PIN: 123456';
+  setTimeout(() => document.getElementById('consultant-pin-input').focus(), 100);
+}
+
+function closeConsultantPin() {
+  document.getElementById('consultant-pin-overlay').classList.remove('open');
+}
+
+function submitConsultantPin() {
+  const pin = (document.getElementById('consultant-pin-input').value || '').trim();
+  const input = document.getElementById('consultant-pin-input');
+
+  if (pin !== CONSULTANT_PIN) {
+    input.classList.add('error');
+    document.getElementById('consultant-pin-hint').textContent = 'Incorrect PIN. Try again.';
+    setTimeout(() => input.classList.remove('error'), 600);
+    input.value = '';
+    return;
+  }
+
+  // Auth success — enter CRM
+  sessionType = 'consultant';
+  sessionClientId = null;
+  closeConsultantPin();
+
+  // Show Back to CRM button (will be visible from portal)
+  const backBtn = document.getElementById('btn-back-crm');
+  if (backBtn) backBtn.style.display = '';
+
+  const ov = document.getElementById('transition-overlay');
+  document.getElementById('transition-label').textContent = 'Loading CRM';
+  ov.classList.add('show');
+
+  setTimeout(() => {
+    document.getElementById('login-screen').classList.remove('active');
+    document.getElementById('crm-screen').classList.add('active');
+    crmShowView('dashboard', document.querySelector('.crm-nav-item'));
+    ov.classList.remove('show');
+  }, 400);
+}
+
+// Close PIN overlay on background click
+document.getElementById('consultant-pin-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeConsultantPin();
+});
+
+// ── Override backToCRM to respect session ─────────────────────────
+// (original defined above — we override it here)
+backToCRM = function() {
+  if (sessionType === 'client') {
+    // Client: back to login screen
+    const ov = document.getElementById('transition-overlay');
+    document.getElementById('transition-label').textContent = 'Signing out';
+    ov.classList.add('show');
+    setTimeout(() => {
+      document.getElementById('portal-screen').classList.remove('active');
+      document.getElementById('login-screen').classList.add('active');
+      // Clear login fields
+      document.getElementById('login-email').value = '';
+      document.getElementById('login-code').value = '';
+      document.getElementById('login-error').classList.remove('show');
+      document.getElementById('login-email').classList.remove('error');
+      document.getElementById('login-code').classList.remove('error');
+      sessionType = null;
+      sessionClientId = null;
+      populateLoginNextMeeting();
+      ov.classList.remove('show');
+    }, 350);
+    return;
+  }
+  // Consultant: back to CRM
+  const ov = document.getElementById('transition-overlay');
+  document.getElementById('transition-label').textContent = 'Back to CRM';
+  ov.classList.add('show');
+  setTimeout(() => {
+    document.getElementById('portal-screen').classList.remove('active');
+    document.getElementById('crm-screen').classList.add('active');
+    ov.classList.remove('show');
+  }, 350);
+};
+
+// ── Update launchPortal to show/hide Back to CRM appropriately ────
+const _origLaunchPortal = launchPortal;
+launchPortal = function(clientId) {
+  // Consultant launching portal — show Back to CRM
+  const backBtn = document.getElementById('btn-back-crm');
+  if (backBtn) { backBtn.style.display = ''; backBtn.textContent = '← Back to CRM'; }
+  _origLaunchPortal(clientId);
+};
+
+// ── Run next-meeting strip after meetings module loads ────────────
+// (meetings are populated in the next script block, so we defer)
+window.addEventListener('load', populateLoginNextMeeting);
+
+</script>
+</body>
+</html>
